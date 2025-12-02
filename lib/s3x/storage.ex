@@ -1,193 +1,123 @@
 defmodule S3x.Storage do
   @moduledoc """
-  Storage backend for S3x that handles file operations on the local filesystem.
+  Storage backend behavior for S3x.
 
-  Configuration priority (highest to lowest):
-  1. Environment variable S3X_STORAGE_ROOT
-  2. Application config from parent project
-  3. Default "./.s3"
+  S3x supports pluggable storage backends to allow different storage strategies:
+  - `S3x.Storage.Filesystem` - Store data on disk (default, production use)
+  - `S3x.Storage.Memory` - Store data in ETS tables (fast, for testing)
+
+  ## Configuration
+
+  Configure the storage backend in your project's config:
+
+      config :s3x,
+        storage_backend: S3x.Storage.Filesystem,  # default
+        storage_root: "./s3"                      # used by Filesystem backend
+
+      # In test.exs for faster tests:
+      config :s3x,
+        storage_backend: S3x.Storage.Memory
+
   """
-
-  @default_storage_root "./.s3"
 
   @doc """
-  Returns the storage root directory.
+  Returns the storage root directory (if applicable to the backend).
   """
-  def storage_root do
-    System.get_env("S3X_STORAGE_ROOT") ||
-      Application.get_env(:s3x, :storage_root) ||
-      @default_storage_root
-  end
+  @callback storage_root() :: String.t()
 
   @doc """
-  Initializes the storage directory.
+  Initializes the storage backend.
   """
-  def init do
-    File.mkdir_p(storage_root())
-  end
+  @callback init() :: :ok | {:error, term()}
 
   @doc """
   Lists all buckets.
   """
-  def list_buckets do
-    with {:ok, files} <- File.ls(storage_root()) do
-      buckets =
-        files
-        |> Enum.filter(&File.dir?(bucket_path(&1)))
-        |> Enum.map(fn name ->
-          stat = File.stat!(bucket_path(name))
-          %{name: name, creation_date: stat.mtime}
-        end)
-
-      {:ok, buckets}
-    end
-  end
+  @callback list_buckets() :: {:ok, list(map())} | {:error, term()}
 
   @doc """
   Creates a bucket.
   """
-  def create_bucket(bucket) do
-    path = bucket_path(bucket)
-
-    cond do
-      File.exists?(path) ->
-        {:error, :bucket_already_exists}
-
-      true ->
-        case File.mkdir_p(path) do
-          :ok -> {:ok, bucket}
-          {:error, reason} -> {:error, reason}
-        end
-    end
-  end
+  @callback create_bucket(bucket :: String.t()) :: {:ok, String.t()} | {:error, term()}
 
   @doc """
   Deletes a bucket.
   """
-  def delete_bucket(bucket) do
-    path = bucket_path(bucket)
-
-    cond do
-      not File.exists?(path) ->
-        {:error, :no_such_bucket}
-
-      true ->
-        case File.ls(path) do
-          {:ok, []} ->
-            File.rmdir(path)
-
-          {:ok, _} ->
-            {:error, :bucket_not_empty}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-    end
-  end
+  @callback delete_bucket(bucket :: String.t()) :: :ok | {:error, term()}
 
   @doc """
   Lists objects in a bucket.
   """
-  def list_objects(bucket) do
-    path = bucket_path(bucket)
-
-    cond do
-      not File.exists?(path) ->
-        {:error, :no_such_bucket}
-
-      true ->
-        objects = list_objects_recursive(path, "")
-        {:ok, objects}
-    end
-  end
+  @callback list_objects(bucket :: String.t()) :: {:ok, list(map())} | {:error, term()}
 
   @doc """
   Stores an object.
   """
-  def put_object(bucket, key, data) do
-    bucket_dir = bucket_path(bucket)
-
-    cond do
-      not File.exists?(bucket_dir) ->
-        {:error, :no_such_bucket}
-
-      true ->
-        object_path = object_path(bucket, key)
-        object_dir = Path.dirname(object_path)
-
-        with :ok <- File.mkdir_p(object_dir),
-             :ok <- File.write(object_path, data) do
-          {:ok, key}
-        end
-    end
-  end
+  @callback put_object(bucket :: String.t(), key :: String.t(), data :: binary()) ::
+              {:ok, String.t()} | {:error, term()}
 
   @doc """
   Retrieves an object.
   """
-  def get_object(bucket, key) do
-    path = object_path(bucket, key)
-
-    cond do
-      File.exists?(path) ->
-        File.read(path)
-
-      true ->
-        {:error, :no_such_key}
-    end
-  end
+  @callback get_object(bucket :: String.t(), key :: String.t()) ::
+              {:ok, binary()} | {:error, term()}
 
   @doc """
   Deletes an object.
   """
-  def delete_object(bucket, key) do
-    path = object_path(bucket, key)
+  @callback delete_object(bucket :: String.t(), key :: String.t()) :: :ok | {:error, term()}
 
-    cond do
-      File.exists?(path) ->
-        File.rm(path)
+  # Delegating functions
 
-      true ->
-        {:error, :no_such_key}
-    end
+  @doc """
+  Returns the configured storage backend module.
+  """
+  def backend do
+    Application.get_env(:s3x, :storage_backend, S3x.Storage.Filesystem)
   end
 
-  # Private helpers
+  @doc """
+  Returns the storage root directory.
+  """
+  def storage_root, do: backend().storage_root()
 
-  defp bucket_path(bucket) do
-    Path.join(storage_root(), bucket)
-  end
+  @doc """
+  Initializes the storage backend.
+  """
+  def init, do: backend().init()
 
-  defp object_path(bucket, key) do
-    Path.join(bucket_path(bucket), key)
-  end
+  @doc """
+  Lists all buckets.
+  """
+  def list_buckets, do: backend().list_buckets()
 
-  defp list_objects_recursive(dir, prefix) do
-    case File.ls(dir) do
-      {:ok, files} ->
-        Enum.flat_map(files, fn file ->
-          full_path = Path.join(dir, file)
-          relative_key = if prefix == "", do: file, else: Path.join(prefix, file)
+  @doc """
+  Creates a bucket.
+  """
+  def create_bucket(bucket), do: backend().create_bucket(bucket)
 
-          cond do
-            File.dir?(full_path) ->
-              list_objects_recursive(full_path, relative_key)
+  @doc """
+  Deletes a bucket.
+  """
+  def delete_bucket(bucket), do: backend().delete_bucket(bucket)
 
-            true ->
-              stat = File.stat!(full_path)
+  @doc """
+  Lists objects in a bucket.
+  """
+  def list_objects(bucket), do: backend().list_objects(bucket)
 
-              [
-                %{
-                  key: relative_key,
-                  size: stat.size,
-                  last_modified: stat.mtime
-                }
-              ]
-          end
-        end)
+  @doc """
+  Stores an object.
+  """
+  def put_object(bucket, key, data), do: backend().put_object(bucket, key, data)
 
-      {:error, _} ->
-        []
-    end
-  end
+  @doc """
+  Retrieves an object.
+  """
+  def get_object(bucket, key), do: backend().get_object(bucket, key)
+
+  @doc """
+  Deletes an object.
+  """
+  def delete_object(bucket, key), do: backend().delete_object(bucket, key)
 end

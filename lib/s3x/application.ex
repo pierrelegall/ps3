@@ -29,10 +29,10 @@ defmodule S3x.Application do
   @impl true
   def start(_type, args) do
     port = get_config(:port, args, "PORT", 9000)
-    storage_root = get_config(:storage_root, args, "S3X_STORAGE_ROOT", "./.s3")
+    _storage_root = get_config(:storage_root, args, "S3X_STORAGE_ROOT", "./.s3")
 
-    # Ensure storage directory exists
-    File.mkdir_p(storage_root)
+    # Initialize the configured storage backend
+    S3x.Storage.init()
 
     children = [
       {Bandit, plug: S3x.Router, scheme: :http, port: port}

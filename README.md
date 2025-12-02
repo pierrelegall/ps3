@@ -7,7 +7,7 @@ A simple S3-compatible storage server written in pure Elixir, designed for devel
 - S3-compatible HTTP API
 - Bucket operations (create, delete, list)
 - Object operations (get, put, delete, list)
-- Filesystem-based storage backend
+- Filesystem-based or in memory-based storage backend
 - Simple configuration with sensible defaults
 - Flexible configuration (application config, environment variables, or runtime options)
 
@@ -40,9 +40,44 @@ In your project's `config/dev.exs`:
 
 ```elixir
 config :s3x,
-  port: 9000,          # default value
-  storage_root: "./s3" # default value
+  port: 9000,                              # default
+  storage_root: "./s3",                    # default
+  storage_backend: S3x.Storage.Filesystem  # default
 ```
+
+#### Storage Backends
+
+S3x supports pluggable storage backends:
+
+**Filesystem Backend (Default)**
+- Stores data on disk using the local filesystem
+- Best for: Development, production, persistent storage
+- Configuration:
+
+```elixir
+# config/dev.exs or config/prod.exs
+config :s3x,
+  storage_backend: S3x.Storage.Filesystem,
+  storage_root: "./s3x_data"
+```
+
+**Memory Backend (ETS)**
+- Stores data in memory using Erlang Term Storage (ETS)
+- Best for: Fast tests, temporary storage, avoiding disk I/O
+- Data is cleared when the application stops
+- Configuration:
+
+```elixir
+# config/test.exs
+config :s3x,
+  storage_backend: S3x.Storage.Memory
+```
+
+Benefits of the Memory backend for testing:
+- Much faster tests (no disk I/O)
+- No SSD wear during test runs
+- Automatic cleanup when tests complete
+- No need to manage temporary directories
 
 #### Environment Variables
 

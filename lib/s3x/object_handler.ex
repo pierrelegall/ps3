@@ -33,7 +33,10 @@ defmodule S3x.ObjectHandler do
     case S3x.Storage.put_object(bucket, key, body) do
       {:ok, _key} ->
         conn
-        |> put_resp_header("etag", ~s("#{:crypto.hash(:md5, body) |> Base.encode16(case: :lower)}"))
+        |> put_resp_header(
+          "etag",
+          ~s("#{:crypto.hash(:md5, body) |> Base.encode16(case: :lower)}")
+        )
         |> send_resp(200, "")
 
       {:error, :no_such_bucket} ->

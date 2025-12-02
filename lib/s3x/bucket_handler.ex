@@ -36,7 +36,9 @@ defmodule S3x.BucketHandler do
         |> send_resp(200, "")
 
       {:error, :bucket_already_exists} ->
-        xml = build_error_response("BucketAlreadyExists", "The requested bucket name already exists")
+        xml =
+          build_error_response("BucketAlreadyExists", "The requested bucket name already exists")
+
         send_xml_error(conn, 409, xml)
 
       {:error, _reason} ->
@@ -57,7 +59,9 @@ defmodule S3x.BucketHandler do
         send_xml_error(conn, 404, xml)
 
       {:error, :bucket_not_empty} ->
-        xml = build_error_response("BucketNotEmpty", "The bucket you tried to delete is not empty")
+        xml =
+          build_error_response("BucketNotEmpty", "The bucket you tried to delete is not empty")
+
         send_xml_error(conn, 409, xml)
 
       {:error, _reason} ->
