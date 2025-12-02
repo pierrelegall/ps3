@@ -9,36 +9,69 @@ A simple S3-compatible storage server written in pure Elixir, designed for devel
 - Object operations (get, put, delete, list)
 - Filesystem-based storage backend
 - Simple configuration with sensible defaults
+- Flexible configuration (application config, environment variables, or runtime options)
 
 ## Getting Started
 
 ### Installation
 
-Install dependencies:
+Add `s3x` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:s3x, "~> 0.1.0"}
+  ]
+end
+```
+
+### Configuration
+
+S3x can be configured in multiple ways with the following priority (highest to lowest):
+
+1. CLI options (runtime configuration via `Application.put_env/3`)
+2. Environment variables
+3. Application config
+4. Defaults
+
+#### Application Configuration
+
+In your project's `config/dev.exs`:
+
+```elixir
+config :s3x,
+  port: 9000,          # default value
+  storage_root: "./s3" # default value
+```
+
+#### Environment Variables
+
+Override configuration with environment variables:
 
 ```sh
-mix deps.get
+PORT=8000 mix run --no-halt
+S3X_STORAGE_ROOT=/path/to/storage mix run --no-halt
+```
+
+#### Runtime Configuration
+
+Set configuration at runtime:
+
+```elixir
+Application.put_env(:s3x, :port, 8080)
+Application.put_env(:s3x, :storage_root, "/tmp/s3x_data")
+Application.ensure_all_started(:s3x)
 ```
 
 ### Running the Server
 
-Start the server:
+For standalone usage, add S3x to your application's supervision tree or start it directly:
 
 ```sh
 mix run --no-halt
 ```
 
-The server will start on port 9000 by default. You can customize the port:
-
-```sh
-PORT=8000 mix run --no-halt
-```
-
-By default, data is stored in `./.s3` directory. You can customize the storage directory:
-
-```sh
-S3X_STORAGE_ROOT=/path/to/storage mix run --no-halt
-```
+The server will start on the configured port (default: 9000) and store data in the configured directory (default: `./.s3`).
 
 ### Usage Examples
 
@@ -88,4 +121,3 @@ Format code:
 ```sh
 mix format
 ```
-

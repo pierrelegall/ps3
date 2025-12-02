@@ -1,14 +1,23 @@
 defmodule S3x.Storage do
   @moduledoc """
   Storage backend for S3x that handles file operations on the local filesystem.
+
+  Configuration priority (highest to lowest):
+  1. Environment variable S3X_STORAGE_ROOT
+  2. Application config from parent project
+  3. Default "./.s3"
   """
 
-  @storage_root Application.compile_env(:s3x, :storage_root, "./.s3")
+  @default_storage_root "./.s3"
 
   @doc """
   Returns the storage root directory.
   """
-  def storage_root, do: System.get_env("S3X_STORAGE_ROOT", @storage_root)
+  def storage_root do
+    System.get_env("S3X_STORAGE_ROOT") ||
+      Application.get_env(:s3x, :storage_root) ||
+      @default_storage_root
+  end
 
   @doc """
   Initializes the storage directory.
@@ -40,13 +49,15 @@ defmodule S3x.Storage do
   def create_bucket(bucket) do
     path = bucket_path(bucket)
 
-    if File.exists?(path) do
-      {:error, :bucket_already_exists}
-    else
-      case File.mkdir_p(path) do
-        :ok -> {:ok, bucket}
-        {:error, reason} -> {:error, reason}
-      end
+    cond do
+      File.exists?(path) ->
+        {:error, :bucket_already_exists}
+
+      true ->
+        case File.mkdir_p(path) do
+          :ok -> {:ok, bucket}
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
@@ -56,19 +67,21 @@ defmodule S3x.Storage do
   def delete_bucket(bucket) do
     path = bucket_path(bucket)
 
-    if not File.exists?(path) do
-      {:error, :no_such_bucket}
-    else
-      case File.ls(path) do
-        {:ok, []} ->
-          File.rmdir(path)
+    cond do
+      not File.exists?(path) ->
+        {:error, :no_such_bucket}
 
-        {:ok, _} ->
-          {:error, :bucket_not_empty}
+      true ->
+        case File.ls(path) do
+          {:ok, []} ->
+            File.rmdir(path)
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+          {:ok, _} ->
+            {:error, :bucket_not_empty}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
     end
   end
 
@@ -78,11 +91,13 @@ defmodule S3x.Storage do
   def list_objects(bucket) do
     path = bucket_path(bucket)
 
-    if not File.exists?(path) do
-      {:error, :no_such_bucket}
-    else
-      objects = list_objects_recursive(path, "")
-      {:ok, objects}
+    cond do
+      not File.exists?(path) ->
+        {:error, :no_such_bucket}
+
+      true ->
+        objects = list_objects_recursive(path, "")
+        {:ok, objects}
     end
   end
 
@@ -92,16 +107,18 @@ defmodule S3x.Storage do
   def put_object(bucket, key, data) do
     bucket_dir = bucket_path(bucket)
 
-    if not File.exists?(bucket_dir) do
-      {:error, :no_such_bucket}
-    else
-      object_path = object_path(bucket, key)
-      object_dir = Path.dirname(object_path)
+    cond do
+      not File.exists?(bucket_dir) ->
+        {:error, :no_such_bucket}
 
-      with :ok <- File.mkdir_p(object_dir),
-           :ok <- File.write(object_path, data) do
-        {:ok, key}
-      end
+      true ->
+        object_path = object_path(bucket, key)
+        object_dir = Path.dirname(object_path)
+
+        with :ok <- File.mkdir_p(object_dir),
+             :ok <- File.write(object_path, data) do
+          {:ok, key}
+        end
     end
   end
 
@@ -111,10 +128,12 @@ defmodule S3x.Storage do
   def get_object(bucket, key) do
     path = object_path(bucket, key)
 
-    if File.exists?(path) do
-      File.read(path)
-    else
-      {:error, :no_such_key}
+    cond do
+      File.exists?(path) ->
+        File.read(path)
+
+      true ->
+        {:error, :no_such_key}
     end
   end
 
@@ -124,10 +143,12 @@ defmodule S3x.Storage do
   def delete_object(bucket, key) do
     path = object_path(bucket, key)
 
-    if File.exists?(path) do
-      File.rm(path)
-    else
-      {:error, :no_such_key}
+    cond do
+      File.exists?(path) ->
+        File.rm(path)
+
+      true ->
+        {:error, :no_such_key}
     end
   end
 
@@ -148,18 +169,20 @@ defmodule S3x.Storage do
           full_path = Path.join(dir, file)
           relative_key = if prefix == "", do: file, else: Path.join(prefix, file)
 
-          if File.dir?(full_path) do
-            list_objects_recursive(full_path, relative_key)
-          else
-            stat = File.stat!(full_path)
+          cond do
+            File.dir?(full_path) ->
+              list_objects_recursive(full_path, relative_key)
 
-            [
-              %{
-                key: relative_key,
-                size: stat.size,
-                last_modified: stat.mtime
-              }
-            ]
+            true ->
+              stat = File.stat!(full_path)
+
+              [
+                %{
+                  key: relative_key,
+                  size: stat.size,
+                  last_modified: stat.mtime
+                }
+              ]
           end
         end)
 
