@@ -187,7 +187,12 @@ defmodule S3x.Storage.Filesystem do
 
   defp process_file(dir, prefix, file) do
     full_path = Path.join(dir, file)
-    relative_key = if prefix == "", do: file, else: Path.join(prefix, file)
+
+    relative_key =
+      cond do
+        prefix == "" -> file
+        true -> Path.join(prefix, file)
+      end
 
     cond do
       File.dir?(full_path) ->

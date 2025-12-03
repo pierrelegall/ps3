@@ -22,9 +22,10 @@ defmodule S3x.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:plug, "~> 1.15"},
       {:bandit, "~> 1.8"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:benchee, "~> 1.5", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:plug, "~> 1.15"}
     ]
   end
 end

@@ -32,23 +32,14 @@ defmodule S3x.Storage.Memory do
   end
 
   @doc """
-  Initializes the ETS tables for buckets and objects.
+  Initializes the Memory backend by ensuring the server is running.
+
+  The server owns the ETS tables to ensure they persist for the lifetime of the backend.
+  This is idempotent and can be called multiple times safely.
   """
   @impl true
   def init do
-    # Create tables if they don't exist
-    # Use :set for both (unique keys)
-    # Make them :public so any process can access
-    # Use :named_table so we can reference by name
-    if :ets.whereis(@buckets_table) == :undefined do
-      :ets.new(@buckets_table, [:set, :public, :named_table])
-    end
-
-    if :ets.whereis(@objects_table) == :undefined do
-      :ets.new(@objects_table, [:set, :public, :named_table])
-    end
-
-    :ok
+    S3x.Storage.Memory.Server.ensure_started()
   end
 
   @doc """

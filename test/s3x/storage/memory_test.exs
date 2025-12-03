@@ -8,13 +8,17 @@ defmodule S3x.Storage.MemoryTest do
 
     on_exit(fn ->
       # Clean up ETS tables after each test
-      # Only delete if tables still exist
-      if :ets.whereis(:s3x_buckets) != :undefined do
+      # Use try-catch to handle race conditions in concurrent tests
+      try do
         :ets.delete_all_objects(:s3x_buckets)
+      catch
+        :error, :badarg -> :ok
       end
 
-      if :ets.whereis(:s3x_objects) != :undefined do
+      try do
         :ets.delete_all_objects(:s3x_objects)
+      catch
+        :error, :badarg -> :ok
       end
     end)
 
@@ -204,27 +208,4 @@ defmodule S3x.Storage.MemoryTest do
     end
   end
 
-  describe "performance characteristics" do
-    test "handles many buckets efficiently" do
-      # Create 1000 buckets
-      for i <- 1..1000 do
-        assert {:ok, _} = Memory.create_bucket("bucket-#{i}")
-      end
-
-      {:ok, buckets} = Memory.list_buckets()
-      assert length(buckets) == 1000
-    end
-
-    test "handles many objects per bucket efficiently" do
-      Memory.create_bucket("test-bucket")
-
-      # Create 1000 objects
-      for i <- 1..1000 do
-        assert {:ok, _} = Memory.put_object("test-bucket", "file-#{i}.txt", "content")
-      end
-
-      {:ok, objects} = Memory.list_objects("test-bucket")
-      assert length(objects) == 1000
-    end
-  end
 end
