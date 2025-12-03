@@ -1,6 +1,6 @@
 # Storage Backend Benchmark
 #
-# Run with: mix run bench/storage_benchmark.exs
+# Run with: mix run bench/storage.exs
 #
 # This benchmark compares the performance of the Filesystem and Memory storage backends.
 

@@ -1,58 +1,89 @@
 # S3x
 
-A simple S3-compatible storage server written in pure Elixir, designed for development environments to avoid complex configuration.
+Pluggable S3-compatible server. It is designed for dev & test environments. This should NOT be use for production.
 
 ## Features
 
 - S3-compatible HTTP API
-- Bucket operations (create, delete, list)
-- Object operations (get, put, delete, list)
-- Filesystem-based or in memory-based storage backend
-- Simple configuration with sensible defaults
-- Flexible configuration (application config, environment variables, or runtime options)
+- Two storage backends: `Filesystem` (default, for dev) and `Memory` (for test)
+- Compatible with any Plug-compatible web server (Phoenix, Bandit, Cowboy)
 
-## Getting Started
-
-### Installation
+## Installation
 
 Add `s3x` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:s3x, "~> 0.1.0"}
+    {:s3x, "~> 0.1.0", only: [:dev, :test]},
+    # [...]
   ]
 end
 ```
 
-### Configuration
+## Configuration
 
-S3x can be configured in multiple ways with the following priority (highest to lowest):
+**Warning**: Configure S3x in environment-specific config files (`config/dev.exs`, `config/test.exs`), NOT in `config/config.exs`.
 
-1. CLI options (runtime configuration via `Application.put_env/3`)
-2. Environment variables
-3. Application config
-4. Defaults
-
-#### Application Configuration
-
-In your project's `config/dev.exs`:
+Configure the storage backend per environment:
 
 ```elixir
+# config/dev.exs
 config :s3x,
-  port: 9000,                              # default
-  storage_root: "./s3",                    # default
-  storage_backend: S3x.Storage.Filesystem  # default
+  storage_backend: S3x.Storage.Filesystem, # default
+  storage_root: "./s3"                     # default
+
+# config/test.exs
+config :s3x,
+  storage_backend: S3x.Storage.Memory
 ```
 
-#### Storage Backends
+## Mounting
 
-S3x supports pluggable storage backends:
+### On Phoenix
 
-**Filesystem Backend (Default)**
+Mount S3x at a specific path in your Phoenix application:
+
+```elixir
+# lib/your_app_web/router.ex
+defmodule AppWeb.Router do
+  use AppWeb, :router
+
+  scope "/" do
+    forward "/s3", S3x.Router
+  end
+end
+```
+
+Access S3x at `http://localhost:4000/s3/` (or your Phoenix app's URL).
+
+### On Bandit
+
+```elixir
+# In your application.ex
+children = [
+  {Bandit, plug: S3x.Router, scheme: :http, port: 9000}
+]
+```
+
+### On Cowboy
+
+```elixir
+# Add to mix.exs deps
+{:plug_cowboy, "~> 2.0"}
+
+# In your application.ex
+children = [
+  {Plug.Cowboy, scheme: :http, plug: S3x.Router, port: 9000}
+]
+```
+
+### Storage backends
+
+#### Filesystem (default)
+
 - Stores data on disk using the local filesystem
 - Best for: Development, production, persistent storage
-- Configuration:
 
 ```elixir
 # config/dev.exs or config/prod.exs
@@ -61,11 +92,11 @@ config :s3x,
   storage_root: "./s3x_data"
 ```
 
-**Memory Backend (ETS)**
+#### Memory
+
 - Stores data in memory using Erlang Term Storage (ETS)
 - Best for: Fast tests, temporary storage, avoiding disk I/O
 - Data is cleared when the application stops
-- Configuration:
 
 ```elixir
 # config/test.exs
@@ -73,86 +104,8 @@ config :s3x,
   storage_backend: S3x.Storage.Memory
 ```
 
-Benefits of the Memory backend for testing:
+Benefits for testing:
 - Much faster tests (no disk I/O)
 - No SSD wear during test runs
 - Automatic cleanup when tests complete
 - No need to manage temporary directories
-
-#### Environment Variables
-
-Override configuration with environment variables:
-
-```sh
-PORT=8000 mix run --no-halt
-S3X_STORAGE_ROOT=/path/to/storage mix run --no-halt
-```
-
-#### Runtime Configuration
-
-Set configuration at runtime:
-
-```elixir
-Application.put_env(:s3x, :port, 8080)
-Application.put_env(:s3x, :storage_root, "/tmp/s3x_data")
-Application.ensure_all_started(:s3x)
-```
-
-### Running the Server
-
-For standalone usage, add S3x to your application's supervision tree or start it directly:
-
-```sh
-mix run --no-halt
-```
-
-The server will start on the configured port (default: 9000) and store data in the configured directory (default: `./.s3`).
-
-### Usage Examples
-
-Using the AWS CLI or any S3-compatible client:
-
-```sh
-# Configure endpoint
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-alias s3="aws s3 --endpoint-url http://localhost:9000"
-
-# Create a bucket
-s3 mb s3://my-bucket
-
-# Upload a file
-s3 cp myfile.txt s3://my-bucket/
-
-# List objects
-s3 ls s3://my-bucket/
-
-# Download a file
-s3 cp s3://my-bucket/myfile.txt downloaded.txt
-
-# Delete an object
-s3 rm s3://my-bucket/myfile.txt
-
-# Delete a bucket
-s3 rb s3://my-bucket
-```
-
-## Development
-
-Run tests:
-
-```sh
-mix test
-```
-
-Run Credo for code quality:
-
-```sh
-mix credo
-```
-
-Format code:
-
-```sh
-mix format
-```

@@ -1,72 +1,53 @@
 defmodule S3x.Application do
   @moduledoc """
-  Application module that starts the S3x HTTP server.
+  Application module that initializes the S3x storage backend.
 
-  Configuration priority (highest to lowest):
-  1. CLI options passed via application start arguments
-  2. Environment variables (PORT, S3X_STORAGE_ROOT)
-  3. Application config (configured in parent project's config.exs)
-  4. Defaults (port: 9000, storage_root: "./.s3")
+  S3x provides an S3-compatible API via a Plug router (`S3x.Router`).
+  It does not manage its own HTTP server. Mount `S3x.Router` in your
+  web server (Phoenix, Bandit, or Cowboy).
 
-  ## Configuration in parent project
+  ## Configuration
 
-  In your project's `config/config.exs`:
+  Configure the storage backend in your `config/dev.exs`:
 
       config :s3x,
-        port: 9000,
-        storage_root: "./s3x_data"
+        storage_backend: S3x.Storage.Filesystem, # default
+        storage_root: "./s3" # default
 
-  ## CLI options
+  And in your `config/test.exs`:
 
-  Start with custom options:
+      config :s3x,
+        storage_backend: S3x.Storage.Memory
 
-      Application.put_env(:s3x, :port, 8080)
-      Application.ensure_all_started(:s3x)
+  ## Mounting S3x.Router
+
+  ### With Phoenix
+
+      # In your router.ex
+      forward "/s3", S3x.Router
+
+  ### With Bandit
+
+      children = [
+        {Bandit, plug: S3x.Router, scheme: :http, port: 9000}
+      ]
+
+  ### With Cowboy
+
+      children = [
+        {Plug.Cowboy, scheme: :http, plug: S3x.Router, port: 9000}
+      ]
 
   """
   use Application
 
   @impl true
-  def start(_type, args) do
-    port = get_config(:port, args, "PORT", 9000)
-    _storage_root = get_config(:storage_root, args, "S3X_STORAGE_ROOT", "./.s3")
-
-    # Initialize the configured storage backend
+  def start(_type, _args) do
     S3x.Storage.init()
 
-    children = [
-      {Bandit, plug: S3x.Router, scheme: :http, port: port}
-    ]
+    children = []
 
     opts = [strategy: :one_for_one, name: S3x.Supervisor]
     Supervisor.start_link(children, opts)
   end
-
-  # Private helpers
-
-  defp get_config(key, args, env_var, default) do
-    # Priority: CLI args > Environment variable > Application config > Default
-    cond do
-      value = Keyword.get(args, key) ->
-        normalize_value(value)
-
-      value = System.get_env(env_var) ->
-        normalize_value(value)
-
-      value = Application.get_env(:s3x, key) ->
-        normalize_value(value)
-
-      true ->
-        normalize_value(default)
-    end
-  end
-
-  defp normalize_value(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {int, ""} -> int
-      _ -> value
-    end
-  end
-
-  defp normalize_value(value), do: value
 end
