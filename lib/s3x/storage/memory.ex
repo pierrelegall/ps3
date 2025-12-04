@@ -1,21 +1,6 @@
 defmodule S3x.Storage.Memory do
   @moduledoc """
   In-memory storage backend for S3x using ETS (Erlang Term Storage).
-
-  This backend stores all data in memory using ETS tables, making it ideal for:
-  - Fast test execution (no disk I/O)
-  - Development environments where persistence isn't needed
-  - Avoiding SSD wear during testing
-
-  Data is automatically cleared when the application stops.
-
-  ## Configuration
-
-  In your project's `config/test.exs`:
-
-      config :s3x,
-        storage_backend: S3x.Storage.Memory
-
   """
 
   @behaviour S3x.Storage
@@ -25,11 +10,11 @@ defmodule S3x.Storage.Memory do
   @objects_table :s3x_objects
 
   @doc """
-  Returns a dummy storage root (not used by memory backend).
+  Returns `nil` as storage root (not used by memory backend).
   """
   @impl true
   def storage_root do
-    ":memory:"
+    nil
   end
 
   @doc """
@@ -41,6 +26,15 @@ defmodule S3x.Storage.Memory do
   @impl true
   def init do
     S3x.Storage.Memory.Server.ensure_started()
+  end
+
+  @doc """
+  Clean the memory.
+  """
+  @impl true
+  def clean do
+    # TODO
+    :ok
   end
 
   @doc """

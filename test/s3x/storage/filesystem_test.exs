@@ -1,17 +1,16 @@
 defmodule S3x.Storage.FilesystemTest do
   use ExUnit.Case
-  alias S3x.Storage.Filesystem
 
-  @test_storage_root "./test_filesystem_data"
+  alias S3x.Storage.Filesystem
 
   setup do
     # Configure environment for filesystem backend
-    System.put_env("S3X_STORAGE_ROOT", @test_storage_root)
-    File.rm_rf(@test_storage_root)
+    System.put_env("S3X_STORAGE_ROOT", test_storage_root())
+    File.rm_rf(test_storage_root())
     Filesystem.init()
 
     on_exit(fn ->
-      File.rm_rf(@test_storage_root)
+      File.rm_rf(test_storage_root())
     end)
 
     :ok
@@ -19,20 +18,20 @@ defmodule S3x.Storage.FilesystemTest do
 
   describe "initialization" do
     test "storage_root/0 returns configured root" do
-      assert Filesystem.storage_root() == @test_storage_root
+      assert Filesystem.storage_root() == test_storage_root()
     end
 
     test "init/0 creates storage directory" do
-      File.rm_rf(@test_storage_root)
+      File.rm_rf(test_storage_root())
       Filesystem.init()
-      assert File.exists?(@test_storage_root)
+      assert File.exists?(test_storage_root())
     end
   end
 
   describe "bucket operations" do
     test "create_bucket/1 creates a new bucket directory" do
       assert {:ok, "test-bucket"} = Filesystem.create_bucket("test-bucket")
-      assert File.exists?(Path.join(@test_storage_root, "test-bucket"))
+      assert File.exists?(Path.join(test_storage_root(), "test-bucket"))
     end
 
     test "create_bucket/1 returns error if bucket already exists" do
@@ -55,7 +54,7 @@ defmodule S3x.Storage.FilesystemTest do
     test "delete_bucket/1 deletes an empty bucket" do
       Filesystem.create_bucket("test-bucket")
       assert :ok = Filesystem.delete_bucket("test-bucket")
-      refute File.exists?(Path.join(@test_storage_root, "test-bucket"))
+      refute File.exists?(Path.join(test_storage_root(), "test-bucket"))
     end
 
     test "delete_bucket/1 returns error if bucket does not exist" do
@@ -78,7 +77,7 @@ defmodule S3x.Storage.FilesystemTest do
     test "put_object/3 stores an object to filesystem" do
       assert {:ok, "file.txt"} = Filesystem.put_object("test-bucket", "file.txt", "hello world")
 
-      path = Path.join([@test_storage_root, "test-bucket", "file.txt"])
+      path = Path.join([test_storage_root(), "test-bucket", "file.txt"])
       assert File.exists?(path)
       assert File.read!(path) == "hello world"
     end
@@ -87,7 +86,7 @@ defmodule S3x.Storage.FilesystemTest do
       assert {:ok, "dir/subdir/file.txt"} =
                Filesystem.put_object("test-bucket", "dir/subdir/file.txt", "nested content")
 
-      path = Path.join([@test_storage_root, "test-bucket", "dir", "subdir", "file.txt"])
+      path = Path.join([test_storage_root(), "test-bucket", "dir", "subdir", "file.txt"])
       assert File.exists?(path)
       assert File.read!(path) == "nested content"
     end
@@ -110,7 +109,7 @@ defmodule S3x.Storage.FilesystemTest do
       Filesystem.put_object("test-bucket", "file.txt", "content")
       assert :ok = Filesystem.delete_object("test-bucket", "file.txt")
 
-      path = Path.join([@test_storage_root, "test-bucket", "file.txt"])
+      path = Path.join([test_storage_root(), "test-bucket", "file.txt"])
       refute File.exists?(path)
     end
 
@@ -142,5 +141,10 @@ defmodule S3x.Storage.FilesystemTest do
       assert {:ok, "binary.dat"} = Filesystem.put_object("test-bucket", "binary.dat", binary_data)
       assert {:ok, ^binary_data} = Filesystem.get_object("test-bucket", "binary.dat")
     end
+  end
+
+  defp test_storage_root do
+    System.tmp_dir!()
+    |> Path.join("s3x_test_data")
   end
 end

@@ -29,7 +29,18 @@ defmodule S3x.Storage.Filesystem do
   """
   @impl true
   def init do
+    File.rm_rf(storage_root())
     File.mkdir_p(storage_root())
+    :ok
+  end
+
+  @doc """
+  Clean the storage directory.
+  """
+  @impl true
+  def clean do
+    File.rm_rf(storage_root())
+    :ok
   end
 
   @doc """

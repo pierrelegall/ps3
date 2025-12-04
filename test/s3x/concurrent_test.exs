@@ -3,10 +3,6 @@ defmodule S3x.ConcurrentTest do
 
   alias S3x.Storage
 
-  setup do
-    :ok = S3x.Storage.Memory.Sandbox.checkout()
-  end
-
   test "test A: creates bucket and expects it empty" do
     bucket = "bucket-a-#{System.unique_integer([:positive])}"
 

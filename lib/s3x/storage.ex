@@ -23,12 +23,17 @@ defmodule S3x.Storage do
   @doc """
   Returns the storage root directory (if applicable to the backend).
   """
-  @callback storage_root() :: String.t()
+  @callback storage_root() :: String.t() | nil
 
   @doc """
   Initializes the storage backend.
   """
   @callback init() :: :ok | {:error, term()}
+
+  @doc """
+  Clean the storage backend.
+  """
+  @callback clean() :: :ok | {:error, term()}
 
   @doc """
   Lists all buckets.

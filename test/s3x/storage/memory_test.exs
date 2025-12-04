@@ -1,20 +1,18 @@
 defmodule S3x.Storage.MemoryTest do
   use ExUnit.Case, async: true
+
   alias S3x.Storage.Memory
 
   setup do
-    # Checkout sandbox storage for test isolation
-    :ok = S3x.Storage.Memory.Sandbox.checkout()
-
-    # Initialize ETS tables (creates global tables in shared mode, no-op in sandbox mode)
+    # Initialize ETS tables (creates global tables in non-sandbox mode)
     Memory.init()
 
     :ok
   end
 
   describe "initialization" do
-    test "storage_root/0 returns :memory: indicator" do
-      assert Memory.storage_root() == ":memory:"
+    test "storage_root/0 returns `nil`" do
+      assert Memory.storage_root() == nil
     end
 
     test "init/0 creates ETS tables" do
@@ -196,5 +194,4 @@ defmodule S3x.Storage.MemoryTest do
       assert length(matching) == 1
     end
   end
-
 end
