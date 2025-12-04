@@ -18,22 +18,53 @@ defmodule S3x.Storage.Memory do
   end
 
   @doc """
-  Initializes the Memory backend by ensuring the server is running.
+  Initializes the Memory backend.
 
-  The server owns the ETS tables to ensure they persist for the lifetime of the backend.
+  ## Behavior by mode:
+
+  - **Non-sandbox mode** (default): Creates global named ETS tables
+    (`:s3x_buckets`, `:s3x_objects`) if they don't exist. Named tables persist
+    until explicitly deleted or the VM shuts down, and are shared across all
+    processes.
+
+  - **Sandbox mode** (`sandbox_mode: true`): Creates per-process unnamed ETS tables
+    for the current process via `S3x.Storage.Memory.Sandbox`. Each process gets
+    isolated tables that are automatically cleaned up when the process exits.
+    While tables are normally created lazily on first access, calling `init/0`
+    explicitly ensures they exist upfront.
+
   This is idempotent and can be called multiple times safely.
   """
   @impl true
   def init do
-    S3x.Storage.Memory.Server.ensure_started()
+    case sandbox_mode?() do
+      true ->
+        # Initialize sandbox tables for the current process
+        S3x.Storage.Memory.Sandbox.get_buckets_table()
+        S3x.Storage.Memory.Sandbox.get_objects_table()
+        :ok
+
+      false ->
+        # Create named tables if they don't exist
+        if :ets.whereis(@buckets_table) == :undefined do
+          :ets.new(@buckets_table, [:set, :public, :named_table])
+        end
+
+        if :ets.whereis(@objects_table) == :undefined do
+          :ets.new(@objects_table, [:set, :public, :named_table])
+        end
+
+        :ok
+    end
   end
 
   @doc """
-  Clean the memory.
+  Cleans up the Memory backend storage.
   """
   @impl true
   def clean do
-    # TODO
+    :ets.delete_all_objects(get_buckets_table())
+    :ets.delete_all_objects(get_objects_table())
     :ok
   end
 
@@ -181,14 +212,7 @@ defmodule S3x.Storage.Memory do
   end
 
   defp bucket_has_objects?(bucket) do
-    # Check if there are any objects in this bucket
-    match_spec = [
-      {{{:"$1", :_}, :_, :_, :_}, [{:==, :"$1", bucket}], [true]}
-    ]
-
-    case :ets.select(get_objects_table(), match_spec, 1) do
-      {_results, _continuation} -> true
-      :"$end_of_table" -> false
-    end
+    match_spec = [{{{bucket, :_}, :_, :_, :_}, [], [true]}]
+    :ets.select_count(get_objects_table(), match_spec) > 0
   end
 end

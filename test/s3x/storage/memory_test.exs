@@ -15,16 +15,64 @@ defmodule S3x.Storage.MemoryTest do
       assert Memory.storage_root() == nil
     end
 
-    test "init/0 creates ETS tables" do
-      # Tables should exist after init
+    @tag :async_false
+    test "init/0 creates ETS tables in non-sandbox mode" do
+      # This test must run synchronously and temporarily disable sandbox mode
+      original_value = Application.get_env(:s3x, :sandbox_mode)
+      Application.put_env(:s3x, :sandbox_mode, false)
+
+      # Clean up any existing tables
+      if :ets.whereis(:s3x_buckets) != :undefined do
+        :ets.delete(:s3x_buckets)
+      end
+
+      if :ets.whereis(:s3x_objects) != :undefined do
+        :ets.delete(:s3x_objects)
+      end
+
+      # Now test that init creates the tables
+      assert :ok = Memory.init()
       assert :ets.whereis(:s3x_buckets) != :undefined
       assert :ets.whereis(:s3x_objects) != :undefined
+
+      # Clean up
+      :ets.delete(:s3x_buckets)
+      :ets.delete(:s3x_objects)
+      Application.put_env(:s3x, :sandbox_mode, original_value)
     end
 
     test "init/0 is idempotent" do
       # Calling init multiple times should not error
       assert :ok = Memory.init()
       assert :ok = Memory.init()
+    end
+
+    test "init/0 creates per-process tables in sandbox mode" do
+      # In sandbox mode (default for tests), init creates per-process tables
+      assert :ok = Memory.init()
+
+      # Verify we can use the storage (tables exist for this process)
+      assert {:ok, "test-bucket"} = Memory.create_bucket("test-bucket")
+      {:ok, buckets} = Memory.list_buckets()
+      assert length(buckets) == 1
+    end
+
+    test "clean/0 clears per-process tables in sandbox mode" do
+      # Create some data
+      Memory.create_bucket("bucket-1")
+      Memory.create_bucket("bucket-2")
+      Memory.put_object("bucket-1", "file.txt", "content")
+
+      # Verify data exists
+      {:ok, buckets} = Memory.list_buckets()
+      assert length(buckets) == 2
+
+      # Clean the storage
+      assert :ok = Memory.clean()
+
+      # Verify everything is cleared
+      {:ok, buckets_after} = Memory.list_buckets()
+      assert buckets_after == []
     end
   end
 
@@ -62,8 +110,8 @@ defmodule S3x.Storage.MemoryTest do
       Memory.create_bucket("test-bucket")
       assert :ok = Memory.delete_bucket("test-bucket")
 
-      # Verify bucket no longer exists in ETS
-      assert [] = :ets.lookup(:s3x_buckets, "test-bucket")
+      # Verify bucket no longer exists by trying to list objects
+      assert {:error, :no_such_bucket} = Memory.list_objects("test-bucket")
     end
 
     test "delete_bucket/1 returns error if bucket does not exist" do
@@ -128,8 +176,8 @@ defmodule S3x.Storage.MemoryTest do
       Memory.put_object("test-bucket", "file.txt", "content")
       assert :ok = Memory.delete_object("test-bucket", "file.txt")
 
-      # Verify object no longer exists in ETS
-      assert [] = :ets.lookup(:s3x_objects, {"test-bucket", "file.txt"})
+      # Verify object no longer exists
+      assert {:error, :no_such_key} = Memory.get_object("test-bucket", "file.txt")
     end
 
     test "delete_object/2 returns error if object does not exist" do
