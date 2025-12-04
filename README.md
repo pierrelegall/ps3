@@ -109,3 +109,46 @@ Benefits for testing:
 - No SSD wear during test runs
 - Automatic cleanup when tests complete
 - No need to manage temporary directories
+- **Supports concurrent test execution** with `S3x.Storage.Memory.Sandbox`
+
+## Testing with Sandbox (Concurrent Tests)
+
+S3x provides `S3x.Storage.Memory.Sandbox` inspired by `Ecto.Adapters.SQL.Sandbox` to enable concurrent test execution with the Memory backend.
+
+### Setup
+
+In your `config/test.exs`:
+
+```elixir
+config :s3x,
+  storage_backend: S3x.Storage.Memory,
+  sandbox_mode: true
+```
+
+In your test files:
+
+```elixir
+defmodule MyApp.S3Test do
+  use ExUnit.Case, async: true  # Enable concurrent tests!
+
+  setup do
+    :ok = S3x.Storage.Memory.Sandbox.checkout()
+  end
+
+  test "creates bucket" do
+    {:ok, "test-bucket"} = S3x.Storage.create_bucket("test-bucket")
+    # Each test has isolated storage - no interference from other tests
+  end
+end
+```
+
+### How It Works
+
+- **Isolated mode**: Each test must explicitly checkout storage via `S3x.Storage.Memory.Sandbox.checkout()`
+- **Per-process ETS tables**: Each test process gets its own unnamed ETS tables
+- **Automatic cleanup**: Tables are automatically deleted when the test process exits
+- **Concurrent execution**: Tests can run in parallel with `async: true` without interference
+
+Unlike `Ecto.Adapters.SQL.Sandbox` which uses database transactions, `S3x.Storage.Memory.Sandbox` creates per-process ETS tables owned by each test process for simpler implementation.
+
+See `S3x.Storage.Memory.Sandbox` documentation for more details.

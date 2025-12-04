@@ -20,6 +20,7 @@ defmodule S3x.Storage.Memory do
 
   @behaviour S3x.Storage
 
+  # Default global table names
   @buckets_table :s3x_buckets
   @objects_table :s3x_objects
 
@@ -48,7 +49,7 @@ defmodule S3x.Storage.Memory do
   @impl true
   def list_buckets do
     buckets =
-      @buckets_table
+      get_buckets_table()
       |> :ets.tab2list()
       |> Enum.map(fn {name, creation_date} ->
         %{name: name, creation_date: creation_date}
@@ -62,7 +63,7 @@ defmodule S3x.Storage.Memory do
   """
   @impl true
   def create_bucket(bucket) do
-    case :ets.insert_new(@buckets_table, {bucket, DateTime.utc_now()}) do
+    case :ets.insert_new(get_buckets_table(), {bucket, DateTime.utc_now()}) do
       true -> {:ok, bucket}
       false -> {:error, :bucket_already_exists}
     end
@@ -81,7 +82,7 @@ defmodule S3x.Storage.Memory do
         {:error, :bucket_not_empty}
 
       true ->
-        :ets.delete(@buckets_table, bucket)
+        :ets.delete(get_buckets_table(), bucket)
         :ok
     end
   end
@@ -97,7 +98,7 @@ defmodule S3x.Storage.Memory do
 
       true ->
         objects =
-          @objects_table
+          get_objects_table()
           |> :ets.tab2list()
           |> Enum.filter(fn {{b, _key}, _data, _size, _modified} -> b == bucket end)
           |> Enum.map(fn {{_bucket, key}, _data, size, last_modified} ->
@@ -124,7 +125,7 @@ defmodule S3x.Storage.Memory do
       true ->
         size = byte_size(data)
         last_modified = DateTime.utc_now()
-        :ets.insert(@objects_table, {{bucket, key}, data, size, last_modified})
+        :ets.insert(get_objects_table(), {{bucket, key}, data, size, last_modified})
         {:ok, key}
     end
   end
@@ -134,7 +135,7 @@ defmodule S3x.Storage.Memory do
   """
   @impl true
   def get_object(bucket, key) do
-    case :ets.lookup(@objects_table, {bucket, key}) do
+    case :ets.lookup(get_objects_table(), {bucket, key}) do
       [{{^bucket, ^key}, data, _size, _modified}] ->
         {:ok, data}
 
@@ -148,9 +149,9 @@ defmodule S3x.Storage.Memory do
   """
   @impl true
   def delete_object(bucket, key) do
-    case :ets.lookup(@objects_table, {bucket, key}) do
+    case :ets.lookup(get_objects_table(), {bucket, key}) do
       [{{^bucket, ^key}, _data, _size, _modified}] ->
-        :ets.delete(@objects_table, {bucket, key})
+        :ets.delete(get_objects_table(), {bucket, key})
         :ok
 
       [] ->
@@ -160,8 +161,26 @@ defmodule S3x.Storage.Memory do
 
   # Private helpers
 
+  defp get_buckets_table do
+    case sandbox_mode?() do
+      true -> S3x.Storage.Memory.Sandbox.get_buckets_table()
+      false -> @buckets_table
+    end
+  end
+
+  defp get_objects_table do
+    case sandbox_mode?() do
+      true -> S3x.Storage.Memory.Sandbox.get_objects_table()
+      false -> @objects_table
+    end
+  end
+
+  defp sandbox_mode? do
+    Application.get_env(:s3x, :sandbox_mode) == true
+  end
+
   defp bucket_exists?(bucket) do
-    case :ets.lookup(@buckets_table, bucket) do
+    case :ets.lookup(get_buckets_table(), bucket) do
       [{^bucket, _}] -> true
       [] -> false
     end
@@ -173,7 +192,7 @@ defmodule S3x.Storage.Memory do
       {{{:"$1", :_}, :_, :_, :_}, [{:==, :"$1", bucket}], [true]}
     ]
 
-    case :ets.select(@objects_table, match_spec, 1) do
+    case :ets.select(get_objects_table(), match_spec, 1) do
       {_results, _continuation} -> true
       :"$end_of_table" -> false
     end

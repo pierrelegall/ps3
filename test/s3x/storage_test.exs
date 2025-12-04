@@ -5,12 +5,17 @@ defmodule S3x.StorageTest do
   @test_storage_root "./test_s3x_data"
 
   setup do
+    # This test explicitly uses Filesystem backend (not Memory/Sandbox)
+    Application.put_env(:s3x, :storage_backend, S3x.Storage.Filesystem)
+
     System.put_env("S3X_STORAGE_ROOT", @test_storage_root)
     File.rm_rf(@test_storage_root)
     Storage.init()
 
     on_exit(fn ->
       File.rm_rf(@test_storage_root)
+      # Restore Memory backend for other tests
+      Application.put_env(:s3x, :storage_backend, S3x.Storage.Memory)
     end)
 
     :ok

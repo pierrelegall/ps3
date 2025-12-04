@@ -1,26 +1,13 @@
 defmodule S3x.Storage.MemoryTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias S3x.Storage.Memory
 
   setup do
-    # Initialize ETS tables for each test
+    # Checkout sandbox storage for test isolation
+    :ok = S3x.Storage.Memory.Sandbox.checkout()
+
+    # Initialize ETS tables (creates global tables in shared mode, no-op in sandbox mode)
     Memory.init()
-
-    on_exit(fn ->
-      # Clean up ETS tables after each test
-      # Use try-catch to handle race conditions in concurrent tests
-      try do
-        :ets.delete_all_objects(:s3x_buckets)
-      catch
-        :error, :badarg -> :ok
-      end
-
-      try do
-        :ets.delete_all_objects(:s3x_objects)
-      catch
-        :error, :badarg -> :ok
-      end
-    end)
 
     :ok
   end
@@ -47,8 +34,9 @@ defmodule S3x.Storage.MemoryTest do
     test "create_bucket/1 creates a new bucket in memory" do
       assert {:ok, "test-bucket"} = Memory.create_bucket("test-bucket")
 
-      # Verify bucket exists in ETS
-      assert [{_name, _creation_date}] = :ets.lookup(:s3x_buckets, "test-bucket")
+      # Verify bucket exists by listing it
+      {:ok, buckets} = Memory.list_buckets()
+      assert Enum.any?(buckets, fn b -> b.name == "test-bucket" end)
     end
 
     test "create_bucket/1 returns error if bucket already exists" do
@@ -100,11 +88,8 @@ defmodule S3x.Storage.MemoryTest do
     test "put_object/3 stores an object in memory" do
       assert {:ok, "file.txt"} = Memory.put_object("test-bucket", "file.txt", "hello world")
 
-      # Verify object exists in ETS
-      assert [{{_bucket, _key}, data, _size, _modified}] =
-               :ets.lookup(:s3x_objects, {"test-bucket", "file.txt"})
-
-      assert data == "hello world"
+      # Verify object exists by retrieving it
+      assert {:ok, "hello world"} = Memory.get_object("test-bucket", "file.txt")
     end
 
     test "put_object/3 handles keys with slashes" do
@@ -121,8 +106,12 @@ defmodule S3x.Storage.MemoryTest do
     test "put_object/3 stores size and last_modified metadata" do
       Memory.put_object("test-bucket", "file.txt", "hello world")
 
-      [{{_bucket, _key}, _data, size, last_modified}] =
-        :ets.lookup(:s3x_objects, {"test-bucket", "file.txt"})
+      # Verify metadata via list_objects
+      {:ok, objects} = Memory.list_objects("test-bucket")
+      [object] = Enum.filter(objects, fn obj -> obj.key == "file.txt" end)
+
+      size = object.size
+      last_modified = object.last_modified
 
       assert size == 11
       assert %DateTime{} = last_modified
