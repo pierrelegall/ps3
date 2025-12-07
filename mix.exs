@@ -25,7 +25,11 @@ defmodule S3x.MixProject do
       {:bandit, "~> 1.8", only: :test},
       {:benchee, "~> 1.5", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:plug, "~> 1.15"}
+      {:ex_aws, "~> 2.5", only: :test},
+      {:ex_aws_s3, "~> 2.5", only: :test},
+      {:plug, "~> 1.15"},
+      {:req, "~> 0.5", only: :test},
+      {:sweet_xml, "~> 0.7", only: :test}
     ]
   end
 end

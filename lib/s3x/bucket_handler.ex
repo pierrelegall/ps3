@@ -111,7 +111,7 @@ defmodule S3x.BucketHandler do
         <DisplayName>s3x</DisplayName>
       </Owner>
       <Buckets>
-    #{buckets_xml}
+        #{buckets_xml}
       </Buckets>
     </ListAllMyBucketsResult>
     """
@@ -154,10 +154,7 @@ defmodule S3x.BucketHandler do
     |> send_resp(status, xml)
   end
 
-  defp format_date({{year, month, day}, {hour, minute, second}}) do
-    "#{year}-#{pad(month)}-#{pad(day)}T#{pad(hour)}:#{pad(minute)}:#{pad(second)}.000Z"
+  defp format_date(%DateTime{} = datetime) do
+    DateTime.to_iso8601(datetime)
   end
-
-  defp pad(num) when num < 10, do: "0#{num}"
-  defp pad(num), do: "#{num}"
 end

@@ -92,6 +92,11 @@ defmodule S3x.Storage do
   def init, do: backend().init()
 
   @doc """
+  Cleans the storage backend.
+  """
+  def clean, do: backend().clean()
+
+  @doc """
   Lists all buckets.
   """
   def list_buckets, do: backend().list_buckets()
