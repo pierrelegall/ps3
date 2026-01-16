@@ -1,4 +1,4 @@
-defmodule S3x.BucketHandler do
+defmodule PS3.BucketHandler do
   @moduledoc """
   Handles S3 bucket operations.
   """
@@ -8,9 +8,9 @@ defmodule S3x.BucketHandler do
   Lists all buckets.
   """
   def list_buckets(conn) do
-    S3x.Storage.init()
+    PS3.Storage.init()
 
-    case S3x.Storage.list_buckets() do
+    case PS3.Storage.list_buckets() do
       {:ok, buckets} ->
         xml = build_list_buckets_response(buckets)
 
@@ -27,9 +27,9 @@ defmodule S3x.BucketHandler do
   Creates a new bucket.
   """
   def create_bucket(conn, bucket) do
-    S3x.Storage.init()
+    PS3.Storage.init()
 
-    case S3x.Storage.create_bucket(bucket) do
+    case PS3.Storage.create_bucket(bucket) do
       {:ok, _bucket} ->
         conn
         |> put_resp_header("location", "/#{bucket}")
@@ -50,7 +50,7 @@ defmodule S3x.BucketHandler do
   Deletes a bucket.
   """
   def delete_bucket(conn, bucket) do
-    case S3x.Storage.delete_bucket(bucket) do
+    case PS3.Storage.delete_bucket(bucket) do
       :ok ->
         send_resp(conn, 204, "")
 
@@ -73,7 +73,7 @@ defmodule S3x.BucketHandler do
   Lists objects in a bucket.
   """
   def list_objects(conn, bucket) do
-    case S3x.Storage.list_objects(bucket) do
+    case PS3.Storage.list_objects(bucket) do
       {:ok, objects} ->
         xml = build_list_objects_response(bucket, objects)
 
@@ -107,8 +107,8 @@ defmodule S3x.BucketHandler do
     <?xml version="1.0" encoding="UTF-8"?>
     <ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
       <Owner>
-        <ID>s3x</ID>
-        <DisplayName>s3x</DisplayName>
+        <ID>ps3</ID>
+        <DisplayName>ps3</DisplayName>
       </Owner>
       <Buckets>
         #{buckets_xml}

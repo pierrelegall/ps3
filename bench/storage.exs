@@ -6,10 +6,10 @@
 
 # Setup for Filesystem backend
 test_storage_root = "./bench_filesystem_data"
-System.put_env("S3X_STORAGE_ROOT", test_storage_root)
+System.put_env("PS3_STORAGE_ROOT", test_storage_root)
 File.rm_rf(test_storage_root)
 
-alias S3x.Storage.{Filesystem, Memory}
+alias PS3.Storage.{Filesystem, Memory}
 
 # Initialize both backends
 Filesystem.init()
@@ -25,12 +25,12 @@ end
 
 # Cleanup function for memory
 cleanup_memory = fn ->
-  if :ets.whereis(:s3x_buckets) != :undefined do
-    :ets.delete_all_objects(:s3x_buckets)
+  if :ets.whereis(:ps3_buckets) != :undefined do
+    :ets.delete_all_objects(:ps3_buckets)
   end
 
-  if :ets.whereis(:s3x_objects) != :undefined do
-    :ets.delete_all_objects(:s3x_objects)
+  if :ets.whereis(:ps3_objects) != :undefined do
+    :ets.delete_all_objects(:ps3_objects)
   end
 
   Memory.init()

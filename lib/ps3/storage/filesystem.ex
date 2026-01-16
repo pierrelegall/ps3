@@ -1,16 +1,16 @@
-defmodule S3x.Storage.Filesystem do
+defmodule PS3.Storage.Filesystem do
   @moduledoc """
-  Filesystem-based storage backend for S3x.
+  Filesystem-based storage backend for PS3.
 
   Stores buckets and objects on the local filesystem.
 
   Configuration priority (highest to lowest):
-  1. Environment variable S3X_STORAGE_ROOT
+  1. Environment variable PS3_STORAGE_ROOT
   2. Application config from parent project
   3. Default "./.s3"
   """
 
-  @behaviour S3x.Storage
+  @behaviour PS3.Storage
 
   @default_storage_root "./.s3"
 
@@ -19,8 +19,8 @@ defmodule S3x.Storage.Filesystem do
   """
   @impl true
   def storage_root do
-    System.get_env("S3X_STORAGE_ROOT") ||
-      Application.get_env(:s3x, :storage_root) ||
+    System.get_env("PS3_STORAGE_ROOT") ||
+      Application.get_env(:ps3, :storage_root) ||
       @default_storage_root
   end
 

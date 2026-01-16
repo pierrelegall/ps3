@@ -1,21 +1,21 @@
-defmodule S3x.StorageTest do
+defmodule PS3.StorageTest do
   use ExUnit.Case
-  alias S3x.Storage
+  alias PS3.Storage
 
-  @test_storage_root "./test_s3x_data"
+  @test_storage_root "./test_ps3_data"
 
   setup do
     # This test explicitly uses Filesystem backend (not Memory/Sandbox)
-    Application.put_env(:s3x, :storage_backend, S3x.Storage.Filesystem)
+    Application.put_env(:ps3, :storage_backend, PS3.Storage.Filesystem)
 
-    System.put_env("S3X_STORAGE_ROOT", @test_storage_root)
+    System.put_env("PS3_STORAGE_ROOT", @test_storage_root)
     File.rm_rf(@test_storage_root)
     Storage.init()
 
     on_exit(fn ->
       File.rm_rf(@test_storage_root)
       # Restore Memory backend for other tests
-      Application.put_env(:s3x, :storage_backend, S3x.Storage.Memory)
+      Application.put_env(:ps3, :storage_backend, PS3.Storage.Memory)
     end)
 
     :ok

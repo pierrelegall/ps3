@@ -1,11 +1,11 @@
-defmodule S3x.Storage.FilesystemTest do
+defmodule PS3.Storage.FilesystemTest do
   use ExUnit.Case
 
-  alias S3x.Storage.Filesystem
+  alias PS3.Storage.Filesystem
 
   setup do
     # Configure environment for filesystem backend
-    System.put_env("S3X_STORAGE_ROOT", test_storage_root())
+    System.put_env("PS3_STORAGE_ROOT", test_storage_root())
     File.rm_rf(test_storage_root())
     Filesystem.init()
 
@@ -145,6 +145,6 @@ defmodule S3x.Storage.FilesystemTest do
 
   defp test_storage_root do
     System.tmp_dir!()
-    |> Path.join("s3x_test_data")
+    |> Path.join("ps3_test_data")
   end
 end

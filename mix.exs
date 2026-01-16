@@ -1,9 +1,9 @@
-defmodule S3x.MixProject do
+defmodule PS3.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :s3x,
+      app: :ps3,
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
@@ -15,19 +15,19 @@ defmodule S3x.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {S3x.Application, []}
+      mod: {PS3.Application, []}
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:bandit, "~> 1.8", only: :test},
+      {:bandit, "~> 1.10", only: :test},
       {:benchee, "~> 1.5", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_aws, "~> 2.5", only: :test},
+      {:ex_aws, "~> 2.6", only: :test},
       {:ex_aws_s3, "~> 2.5", only: :test},
-      {:plug, "~> 1.15"},
+      {:plug, "~> 1.19"},
       {:req, "~> 0.5", only: :test},
       {:sweet_xml, "~> 0.7", only: :test}
     ]

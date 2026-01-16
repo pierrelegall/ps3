@@ -1,13 +1,15 @@
-defmodule S3x.Storage.Memory do
+defmodule PS3.Storage.Memory do
   @moduledoc """
-  In-memory storage backend for S3x using ETS (Erlang Term Storage).
+  In-memory storage backend for PS3 using ETS (Erlang Term Storage).
   """
 
-  @behaviour S3x.Storage
+  @behaviour PS3.Storage
+
+  alias PS3.Storage.Memory.Sandbox
 
   # Default global table names
-  @buckets_table :s3x_buckets
-  @objects_table :s3x_objects
+  @buckets_table :ps3_buckets
+  @objects_table :ps3_objects
 
   @doc """
   Returns `nil` as storage root (not used by memory backend).
@@ -22,13 +24,13 @@ defmodule S3x.Storage.Memory do
 
   ## Behavior by mode:
 
-  - **Non-sandbox mode** (default): Creates global named ETS tables
-    (`:s3x_buckets`, `:s3x_objects`) if they don't exist. Named tables persist
+  - **Production** (sandbox disabled): Creates global named ETS tables
+    (`:ps3_buckets`, `:ps3_objects`) if they don't exist. Named tables persist
     until explicitly deleted or the VM shuts down, and are shared across all
     processes.
 
-  - **Sandbox mode** (`sandbox_mode: true`): Creates per-process unnamed ETS tables
-    for the current process via `S3x.Storage.Memory.Sandbox`. Each process gets
+  - **Test** (sandbox enabled via `Sandbox.mode/1`): Creates per-process unnamed
+    ETS tables for the current process via `Sandbox`. Each process gets
     isolated tables that are automatically cleaned up when the process exits.
     While tables are normally created lazily on first access, calling `init/0`
     explicitly ensures they exist upfront.
@@ -37,14 +39,14 @@ defmodule S3x.Storage.Memory do
   """
   @impl true
   def init do
-    case sandbox_mode?() do
-      true ->
+    cond do
+      Sandbox.enabled?() ->
         # Initialize sandbox tables for the current process
-        S3x.Storage.Memory.Sandbox.get_buckets_table()
-        S3x.Storage.Memory.Sandbox.get_objects_table()
+        Sandbox.get_buckets_table()
+        Sandbox.get_objects_table()
         :ok
 
-      false ->
+      true ->
         # Create named tables if they don't exist
         if :ets.whereis(@buckets_table) == :undefined do
           :ets.new(@buckets_table, [:set, :public, :named_table])
@@ -187,21 +189,17 @@ defmodule S3x.Storage.Memory do
   # Private helpers
 
   defp get_buckets_table do
-    case sandbox_mode?() do
-      true -> S3x.Storage.Memory.Sandbox.get_buckets_table()
-      false -> @buckets_table
+    cond do
+      Sandbox.enabled?() -> Sandbox.get_buckets_table()
+      true -> @buckets_table
     end
   end
 
   defp get_objects_table do
-    case sandbox_mode?() do
-      true -> S3x.Storage.Memory.Sandbox.get_objects_table()
-      false -> @objects_table
+    cond do
+      Sandbox.enabled?() -> Sandbox.get_objects_table()
+      true -> @objects_table
     end
-  end
-
-  defp sandbox_mode? do
-    Application.get_env(:s3x, :sandbox_mode) == true
   end
 
   defp bucket_exists?(bucket) do

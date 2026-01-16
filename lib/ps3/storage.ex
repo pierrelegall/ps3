@@ -1,22 +1,22 @@
-defmodule S3x.Storage do
+defmodule PS3.Storage do
   @moduledoc """
-  Storage backend behavior for S3x.
+  Storage backend behavior for PS3.
 
-  S3x supports pluggable storage backends to allow different storage strategies:
-  - `S3x.Storage.Filesystem` - Store data on disk (default, production use)
-  - `S3x.Storage.Memory` - Store data in ETS tables (fast, for testing)
+  PS3 supports pluggable storage backends to allow different storage strategies:
+  - `PS3.Storage.Filesystem` - Store data on disk (default, production use)
+  - `PS3.Storage.Memory` - Store data in ETS tables (fast, for testing)
 
   ## Configuration
 
   Configure the storage backend in your project's config:
 
-      config :s3x,
-        storage_backend: S3x.Storage.Filesystem,  # default
+      config :ps3,
+        storage_backend: PS3.Storage.Filesystem,  # default
         storage_root: "./s3"                      # used by Filesystem backend
 
       # In test.exs for faster tests:
-      config :s3x,
-        storage_backend: S3x.Storage.Memory
+      config :ps3,
+        storage_backend: PS3.Storage.Memory
 
   """
 
@@ -78,7 +78,7 @@ defmodule S3x.Storage do
   Returns the configured storage backend module.
   """
   def backend do
-    Application.get_env(:s3x, :storage_backend, S3x.Storage.Filesystem)
+    Application.get_env(:ps3, :storage_backend, PS3.Storage.Filesystem)
   end
 
   @doc """

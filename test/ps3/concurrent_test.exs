@@ -1,7 +1,7 @@
-defmodule S3x.ConcurrentTest do
+defmodule PS3.ConcurrentTest do
   use ExUnit.Case, async: true
 
-  alias S3x.Storage
+  alias PS3.Storage
 
   test "test A: creates bucket and expects it empty" do
     bucket = "bucket-a-#{System.unique_integer([:positive])}"

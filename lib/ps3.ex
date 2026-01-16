@@ -1,8 +1,8 @@
-defmodule S3x do
+defmodule PS3 do
   @moduledoc """
-  S3x - S3-compatible server for dev & test environments.
+  PS3 - S3-compatible server for dev & test environments.
 
-  Provides a minimal S3 API implementation via a Plug router (`S3x.Router`)
+  Provides a minimal S3 API implementation via a Plug router (`PS3.Router`)
   that mounts in any Plug-compatible web server (Phoenix, Bandit, Cowboy).
 
   ## Features
@@ -17,16 +17,16 @@ defmodule S3x do
   Configure per environment in `config/dev.exs` and `config/test.exs`:
 
       # config/dev.exs
-      config :s3x,
-        storage_backend: S3x.Storage.Filesystem, # default
+      config :ps3,
+        storage_backend: PS3.Storage.Filesystem, # default
         storage_root: "./s3"                     # default
 
       # config/test.exs
-      config :s3x,
-        storage_backend: S3x.Storage.Memory
+      config :ps3,
+        storage_backend: PS3.Storage.Memory
 
   ## Mounting
 
-  See `S3x.Application` for mounting examples.
+  See `PS3.Application` for mounting examples.
   """
 end

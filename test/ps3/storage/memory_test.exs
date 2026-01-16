@@ -1,7 +1,8 @@
-defmodule S3x.Storage.MemoryTest do
+defmodule PS3.Storage.MemoryTest do
   use ExUnit.Case, async: true
 
-  alias S3x.Storage.Memory
+  alias PS3.Storage.Memory
+  alias PS3.Storage.Memory.Sandbox
 
   setup do
     # Initialize ETS tables (creates global tables in non-sandbox mode)
@@ -16,29 +17,33 @@ defmodule S3x.Storage.MemoryTest do
     end
 
     @tag :async_false
-    test "init/0 creates ETS tables in non-sandbox mode" do
-      # This test must run synchronously and temporarily disable sandbox mode
-      original_value = Application.get_env(:s3x, :sandbox_mode)
-      Application.put_env(:s3x, :sandbox_mode, false)
+    test "init/0 creates ETS tables when sandbox is disabled" do
+      # This test must run synchronously and temporarily disable sandbox
+      original_mode = Application.get_env(:ps3, :ps3_sandbox_mode_setting)
+      Application.delete_env(:ps3, :ps3_sandbox_mode_setting)
 
       # Clean up any existing tables
-      if :ets.whereis(:s3x_buckets) != :undefined do
-        :ets.delete(:s3x_buckets)
+      if :ets.whereis(:ps3_buckets) != :undefined do
+        :ets.delete(:ps3_buckets)
       end
 
-      if :ets.whereis(:s3x_objects) != :undefined do
-        :ets.delete(:s3x_objects)
+      if :ets.whereis(:ps3_objects) != :undefined do
+        :ets.delete(:ps3_objects)
       end
 
       # Now test that init creates the tables
       assert :ok = Memory.init()
-      assert :ets.whereis(:s3x_buckets) != :undefined
-      assert :ets.whereis(:s3x_objects) != :undefined
+      assert :ets.whereis(:ps3_buckets) != :undefined
+      assert :ets.whereis(:ps3_objects) != :undefined
 
       # Clean up
-      :ets.delete(:s3x_buckets)
-      :ets.delete(:s3x_objects)
-      Application.put_env(:s3x, :sandbox_mode, original_value)
+      :ets.delete(:ps3_buckets)
+      :ets.delete(:ps3_objects)
+
+      # Restore original mode
+      if original_mode do
+        Sandbox.mode(original_mode)
+      end
     end
 
     test "init/0 is idempotent" do
