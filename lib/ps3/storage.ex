@@ -33,7 +33,7 @@ defmodule PS3.Storage do
   @doc """
   Clean the storage backend.
   """
-  @callback clean() :: :ok | {:error, term()}
+  @callback clean_up() :: :ok | {:error, term()}
 
   @doc """
   Lists all buckets.
@@ -94,7 +94,7 @@ defmodule PS3.Storage do
   @doc """
   Cleans the storage backend.
   """
-  def clean, do: backend().clean()
+  def clean_up, do: backend().clean_up()
 
   @doc """
   Lists all buckets.

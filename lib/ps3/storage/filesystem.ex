@@ -38,7 +38,7 @@ defmodule PS3.Storage.Filesystem do
   Clean the storage directory.
   """
   @impl true
-  def clean do
+  def clean_up do
     File.rm_rf(storage_root())
     :ok
   end
@@ -53,8 +53,8 @@ defmodule PS3.Storage.Filesystem do
         files
         |> Enum.filter(&File.dir?(bucket_path(&1)))
         |> Enum.map(fn name ->
-          stat = File.stat!(bucket_path(name))
-          %{name: name, creation_date: stat.mtime}
+          stat = File.stat!(bucket_path(name), time: :posix)
+          %{name: name, creation_date: DateTime.from_unix!(stat.mtime)}
         end)
 
       {:ok, buckets}
@@ -210,13 +210,13 @@ defmodule PS3.Storage.Filesystem do
         list_objects_recursive(full_path, relative_key)
 
       true ->
-        stat = File.stat!(full_path)
+        stat = File.stat!(full_path, time: :posix)
 
         [
           %{
             key: relative_key,
             size: stat.size,
-            last_modified: stat.mtime
+            last_modified: DateTime.from_unix!(stat.mtime)
           }
         ]
     end

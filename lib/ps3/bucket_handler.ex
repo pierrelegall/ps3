@@ -8,8 +8,6 @@ defmodule PS3.BucketHandler do
   Lists all buckets.
   """
   def list_buckets(conn) do
-    PS3.Storage.init()
-
     case PS3.Storage.list_buckets() do
       {:ok, buckets} ->
         xml = build_list_buckets_response(buckets)
@@ -27,8 +25,6 @@ defmodule PS3.BucketHandler do
   Creates a new bucket.
   """
   def create_bucket(conn, bucket) do
-    PS3.Storage.init()
-
     case PS3.Storage.create_bucket(bucket) do
       {:ok, _bucket} ->
         conn

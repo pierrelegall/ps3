@@ -2,6 +2,8 @@ defmodule PS3.Storage.Memory.SandboxTest do
   # async: false because these tests modify global sandbox mode
   use ExUnit.Case, async: false
 
+  @moduletag :unit
+
   alias PS3.Storage.Memory.Sandbox
 
   setup do

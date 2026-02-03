@@ -1,12 +1,15 @@
 defmodule PS3.Storage.MemoryTest do
   use ExUnit.Case, async: true
 
+  @moduletag :unit
+
   alias PS3.Storage.Memory
   alias PS3.Storage.Memory.Sandbox
 
   setup do
-    # Initialize ETS tables (creates global tables in non-sandbox mode)
     Memory.init()
+
+    on_exit(fn -> Memory.clean_up() end)
 
     :ok
   end
@@ -62,7 +65,7 @@ defmodule PS3.Storage.MemoryTest do
       assert length(buckets) == 1
     end
 
-    test "clean/0 clears per-process tables in sandbox mode" do
+    test "clean_up/0 clears per-process tables in sandbox mode" do
       # Create some data
       Memory.create_bucket("bucket-1")
       Memory.create_bucket("bucket-2")
@@ -73,7 +76,7 @@ defmodule PS3.Storage.MemoryTest do
       assert length(buckets) == 2
 
       # Clean the storage
-      assert :ok = Memory.clean()
+      assert :ok = Memory.clean_up()
 
       # Verify everything is cleared
       {:ok, buckets_after} = Memory.list_buckets()

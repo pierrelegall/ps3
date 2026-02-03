@@ -1,17 +1,16 @@
 defmodule PS3.Storage.FilesystemTest do
   use ExUnit.Case
 
+  @moduletag :unit
+
   alias PS3.Storage.Filesystem
 
   setup do
-    # Configure environment for filesystem backend
     System.put_env("PS3_STORAGE_ROOT", test_storage_root())
-    File.rm_rf(test_storage_root())
+
     Filesystem.init()
 
-    on_exit(fn ->
-      File.rm_rf(test_storage_root())
-    end)
+    on_exit(fn -> Filesystem.clean_up() end)
 
     :ok
   end

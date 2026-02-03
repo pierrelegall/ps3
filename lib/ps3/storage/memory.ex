@@ -64,7 +64,7 @@ defmodule PS3.Storage.Memory do
   Cleans up the Memory backend storage.
   """
   @impl true
-  def clean do
+  def clean_up do
     :ets.delete_all_objects(get_buckets_table())
     :ets.delete_all_objects(get_objects_table())
     :ok

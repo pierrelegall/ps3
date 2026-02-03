@@ -1,6 +1,8 @@
 defmodule PS3.ConcurrentTest do
   use ExUnit.Case, async: true
 
+  @moduletag :unit
+
   alias PS3.Storage
 
   test "test A: creates bucket and expects it empty" do

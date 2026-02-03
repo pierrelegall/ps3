@@ -1,5 +1,8 @@
 defmodule PS3.StorageTest do
   use ExUnit.Case
+
+  @moduletag :unit
+
   alias PS3.Storage
 
   @test_storage_root "./test_ps3_data"

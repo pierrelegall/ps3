@@ -1,5 +1,7 @@
-defmodule PS3.IntegrationTest do
+defmodule PS3.Integration.S3ApiTest do
   use ExUnit.Case, async: true
+
+  @moduletag :integration
 
   @test_bucket "test-bucket"
   @test_key "test-file.txt"

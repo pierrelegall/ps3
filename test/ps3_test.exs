@@ -1,5 +1,8 @@
 defmodule PS3Test do
   use ExUnit.Case
+
+  @moduletag :unit
+
   doctest PS3
 
   test "module exists" do
