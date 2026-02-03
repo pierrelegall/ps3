@@ -73,9 +73,19 @@ defmodule PS3.BucketHandler do
   Lists objects in a bucket.
   """
   def list_objects(conn, bucket) do
+    conn = Plug.Conn.fetch_query_params(conn)
+    prefix = conn.query_params["prefix"]
+    list_type = conn.query_params["list-type"]
+
     case PS3.Storage.list_objects(bucket) do
       {:ok, objects} ->
-        xml = build_list_objects_response(bucket, objects)
+        objects =
+          case prefix do
+            nil -> objects
+            _ -> Enum.filter(objects, &String.starts_with?(&1.key, prefix))
+          end
+
+        xml = build_list_objects_response(bucket, objects, prefix, list_type)
 
         conn
         |> put_resp_content_type("application/xml")
@@ -117,7 +127,7 @@ defmodule PS3.BucketHandler do
     """
   end
 
-  defp build_list_objects_response(bucket, objects) do
+  defp build_list_objects_response(bucket, objects, prefix, list_type) do
     objects_xml =
       Enum.map_join(objects, "\n", fn object ->
         """
@@ -129,10 +139,15 @@ defmodule PS3.BucketHandler do
         """
       end)
 
+    prefix_xml = if prefix, do: "\n  <Prefix>#{prefix}</Prefix>", else: ""
+    key_count_xml = if list_type == "2", do: "\n  <KeyCount>#{length(objects)}</KeyCount>", else: ""
+
     """
     <?xml version="1.0" encoding="UTF-8"?>
     <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-      <Name>#{bucket}</Name>
+      <Name>#{bucket}</Name>#{prefix_xml}
+      <MaxKeys>1000</MaxKeys>
+      <IsTruncated>false</IsTruncated>#{key_count_xml}
     #{objects_xml}
     </ListBucketResult>
     """
