@@ -12,7 +12,7 @@ PS3.Storage.Memory.Sandbox.mode(:auto)
 # Configure ExAws for integration tests
 Application.put_env(:ex_aws, :access_key_id, "test")
 Application.put_env(:ex_aws, :secret_access_key, "test")
-Application.put_env(:ex_aws, :http_client, ExAws.Request.Req)
+Application.put_env(:ex_aws, :http_client, PS3.ExAwsHttpClient)
 
 Application.put_env(:ex_aws, :s3,
   scheme: "http://",

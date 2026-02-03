@@ -212,6 +212,25 @@ defmodule PS3.Storage.Memory.Sandbox do
   end
 
   @doc """
+  Forces a process to use another process's sandbox, replacing any existing allowance.
+
+  Unlike `allow/3`, this unconditionally updates the allowance even if the
+  process is already allowed by a different owner. Used by `SandboxAllowance`
+  when a long-lived handler process is reused across different test requests.
+  """
+  @spec force_allow(pid(), pid()) :: :ok | :not_found
+  def force_allow(parent, allow) do
+    case lookup_status(parent) do
+      {:ok, :owner, _tables} ->
+        register_allowed(allow, parent)
+        :ok
+
+      _ ->
+        :not_found
+    end
+  end
+
+  @doc """
   Sets the sandbox mode.
 
   ## Modes
@@ -366,6 +385,29 @@ defmodule PS3.Storage.Memory.Sandbox do
     Process.unlink(pid)
     Process.exit(pid, :shutdown)
     :ok
+  end
+
+  @doc """
+  Looks up which PID owns the sandbox for the given process.
+
+  Returns `{:ok, owner_pid}` if the process is an owner or is allowed by an owner,
+  or `:not_found` if the process has no sandbox.
+
+  ## Examples
+
+      iex> PS3.Storage.Memory.Sandbox.checkout()
+      :ok
+      iex> PS3.Storage.Memory.Sandbox.lookup_owner(self())
+      {:ok, self()}
+
+  """
+  @spec lookup_owner(pid()) :: {:ok, pid()} | :not_found
+  def lookup_owner(pid) do
+    case lookup_status(pid) do
+      {:ok, :owner, _tables} -> {:ok, pid}
+      {:ok, {:allowed, owner}, _} -> {:ok, owner}
+      :not_found -> :not_found
+    end
   end
 
   # ============================================================================

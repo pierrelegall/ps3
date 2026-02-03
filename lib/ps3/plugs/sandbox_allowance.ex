@@ -52,7 +52,20 @@ defmodule PS3.Plugs.SandboxAllowance do
 
   defp allow_from_header(conn, encoded) do
     owner = Sandbox.decode_metadata(encoded)
-    Sandbox.allow(owner, self())
+
+    case Sandbox.allow(owner, self()) do
+      {:already, :allowed} ->
+        # Handler may be reused across requests from different test processes.
+        # If already allowed by a different owner, re-allow for the new one.
+        case Sandbox.lookup_owner(self()) do
+          {:ok, ^owner} -> :ok
+          _ -> Sandbox.force_allow(owner, self())
+        end
+
+      _ ->
+        :ok
+    end
+
     conn
   rescue
     _ -> conn
