@@ -6,7 +6,7 @@
 
 # Setup for Filesystem backend
 test_storage_root = "./bench_filesystem_data"
-System.put_env("PS3_STORAGE_ROOT", test_storage_root)
+PS3.Storage.Filesystem.set_storage_root(test_storage_root)
 File.rm_rf(test_storage_root)
 
 alias PS3.Storage.{Filesystem, Memory}

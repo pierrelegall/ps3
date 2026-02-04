@@ -7,15 +7,7 @@ defmodule PS3.Storage.Memory.SandboxTest do
   alias PS3.Storage.Memory.Sandbox
 
   setup do
-    # Reset mode to auto before each test
     Sandbox.mode(:auto)
-
-    on_exit(fn ->
-      # Ensure mode is reset even if test fails
-      Sandbox.mode(:auto)
-    end)
-
-    :ok
   end
 
   describe "checkout/1" do
@@ -116,11 +108,11 @@ defmodule PS3.Storage.Memory.SandboxTest do
   end
 
   describe "mode/1" do
-    test "sets auto mode" do
+    test "sets mode: auto" do
       assert :ok = Sandbox.mode(:auto)
     end
 
-    test "sets manual mode" do
+    test "sets mode: manual" do
       assert :ok = Sandbox.mode(:manual)
     end
 
@@ -270,6 +262,40 @@ defmodule PS3.Storage.Memory.SandboxTest do
       assert {:ok, ^owner_tables} = result
 
       Sandbox.stop_owner(owner)
+    end
+  end
+
+  describe "isolation" do
+    test "each owner sees only its own buckets" do
+      alias PS3.Storage.Memory
+
+      owner1 = Sandbox.start_owner!()
+      owner2 = Sandbox.start_owner!()
+
+      # Owner 1 creates a bucket
+      task1 =
+        Task.async(fn ->
+          Sandbox.allow(owner1, self())
+          Memory.create_bucket("owner1-bucket")
+          Memory.list_buckets()
+        end)
+
+      # Owner 2 creates a different bucket
+      task2 =
+        Task.async(fn ->
+          Sandbox.allow(owner2, self())
+          Memory.create_bucket("owner2-bucket")
+          Memory.list_buckets()
+        end)
+
+      {:ok, buckets1} = Task.await(task1)
+      {:ok, buckets2} = Task.await(task2)
+
+      assert [%{name: "owner1-bucket"}] = buckets1
+      assert [%{name: "owner2-bucket"}] = buckets2
+
+      Sandbox.stop_owner(owner1)
+      Sandbox.stop_owner(owner2)
     end
   end
 

@@ -3,11 +3,6 @@ defmodule PS3.Storage.Filesystem do
   Filesystem-based storage backend for PS3.
 
   Stores buckets and objects on the local filesystem.
-
-  Configuration priority (highest to lowest):
-  1. Environment variable PS3_STORAGE_ROOT
-  2. Application config from parent project
-  3. Default "./.s3"
   """
 
   @behaviour PS3.Storage
@@ -16,12 +11,26 @@ defmodule PS3.Storage.Filesystem do
 
   @doc """
   Returns the storage root directory.
+
+  Defaults to `#{@default_storage_root}` if not configured.
   """
   @impl true
   def storage_root do
-    System.get_env("PS3_STORAGE_ROOT") ||
-      Application.get_env(:ps3, :storage_root) ||
-      @default_storage_root
+    Application.get_env(:ps3, :storage_root) || @default_storage_root
+  end
+
+  @doc """
+  Sets the storage root directory.
+  """
+  def set_storage_root(path) do
+    Application.put_env(:ps3, :storage_root, path)
+  end
+
+  @doc """
+  Resets the storage root to the default (`#{@default_storage_root}`).
+  """
+  def reset_storage_root do
+    Application.delete_env(:ps3, :storage_root)
   end
 
   @doc """

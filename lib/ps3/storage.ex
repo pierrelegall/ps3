@@ -20,6 +20,8 @@ defmodule PS3.Storage do
 
   """
 
+  @default_backend PS3.Storage.Filesystem
+
   @doc """
   Returns the storage root directory (if applicable to the backend).
   """
@@ -78,7 +80,31 @@ defmodule PS3.Storage do
   Returns the configured storage backend module.
   """
   def backend do
-    Application.get_env(:ps3, :storage_backend, PS3.Storage.Filesystem)
+    Application.get_env(:ps3, :storage_backend, @default_backend)
+  end
+
+  @doc """
+  Sets the storage backend module.
+
+  Returns `:ok` if the module implements the `PS3.Storage` behaviour,
+  or `{:error, :invalid_backend}` otherwise.
+  """
+  def set_backend(module) do
+    case implements_storage?(module) do
+      true ->
+        Application.put_env(:ps3, :storage_backend, module)
+        :ok
+
+      false ->
+        {:error, :invalid_backend}
+    end
+  end
+
+  @doc """
+  Resets the storage backend to the default (`#{inspect(@default_backend)}`).
+  """
+  def reset_backend do
+    Application.delete_env(:ps3, :storage_backend)
   end
 
   @doc """
@@ -130,4 +156,13 @@ defmodule PS3.Storage do
   Deletes an object.
   """
   def delete_object(bucket, key), do: backend().delete_object(bucket, key)
+
+  defp implements_storage?(module) do
+    behaviours =
+      module.module_info(:attributes)
+      |> Keyword.get_values(:behaviour)
+      |> List.flatten()
+
+    PS3.Storage in behaviours
+  end
 end

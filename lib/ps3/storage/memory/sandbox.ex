@@ -74,6 +74,7 @@ defmodule PS3.Storage.Memory.Sandbox do
 
       iex> PS3.Storage.Memory.Sandbox.mode(:auto)
       :ok
+
       iex> PS3.Storage.Memory.Sandbox.enabled?()
       true
 
@@ -134,6 +135,7 @@ defmodule PS3.Storage.Memory.Sandbox do
 
       iex> PS3.Storage.Memory.Sandbox.checkout()
       :ok
+
       iex> PS3.Storage.Memory.Sandbox.checkin()
       :ok
 
@@ -184,6 +186,7 @@ defmodule PS3.Storage.Memory.Sandbox do
 
       iex> PS3.Storage.Memory.Sandbox.checkout()
       :ok
+
       iex> PS3.Storage.Memory.Sandbox.allow(self(), spawn(fn -> :ok end))
       :ok
 
@@ -253,6 +256,7 @@ defmodule PS3.Storage.Memory.Sandbox do
 
       iex> PS3.Storage.Memory.Sandbox.checkout()
       :ok
+
       iex> PS3.Storage.Memory.Sandbox.mode({:shared, self()})
       :ok
 
@@ -397,6 +401,7 @@ defmodule PS3.Storage.Memory.Sandbox do
 
       iex> PS3.Storage.Memory.Sandbox.checkout()
       :ok
+
       iex> PS3.Storage.Memory.Sandbox.lookup_owner(self())
       {:ok, self()}
 

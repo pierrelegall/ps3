@@ -2,16 +2,15 @@ defmodule PS3.Storage.MemoryTest do
   use ExUnit.Case, async: true
 
   @moduletag :unit
+  @moduletag :memory
 
   alias PS3.Storage.Memory
   alias PS3.Storage.Memory.Sandbox
 
   setup do
+    PS3.Storage.set_backend(PS3.Storage.Memory)
+    Sandbox.mode(:auto)
     Memory.init()
-
-    on_exit(fn -> Memory.clean_up() end)
-
-    :ok
   end
 
   describe "initialization" do
