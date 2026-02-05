@@ -2,6 +2,7 @@ defmodule PS3.StorageTest do
   use ExUnit.Case, async: false
 
   @moduletag :unit
+  @moduletag :storage
 
   alias PS3.Storage
 
@@ -12,24 +13,25 @@ defmodule PS3.StorageTest do
     end
 
     test "returns Memory when configured" do
-      Storage.set_backend(PS3.Storage.Memory)
+      Storage.backend(PS3.Storage.Memory)
       assert Storage.backend() == PS3.Storage.Memory
     end
 
     test "returns Filesystem when configured" do
-      Storage.set_backend(PS3.Storage.Filesystem)
+      Storage.backend(PS3.Storage.Filesystem)
       assert Storage.backend() == PS3.Storage.Filesystem
     end
   end
 
-  describe "set_backend/1" do
+  describe "backend/1" do
     test "accepts a module that implements PS3.Storage" do
-      assert :ok = Storage.set_backend(PS3.Storage.Memory)
+      assert :ok = Storage.backend(PS3.Storage.Memory)
       assert Storage.backend() == PS3.Storage.Memory
     end
 
     test "rejects a module that does not implement PS3.Storage" do
-      assert {:error, :invalid_backend} = Storage.set_backend(String)
+      assert {:error, :invalid_backend} = Storage.backend(Regex)
+      assert {:error, :invalid_backend} = Storage.backend(NotABackend)
     end
   end
 end

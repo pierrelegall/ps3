@@ -22,8 +22,15 @@ defmodule PS3.Storage.Filesystem do
   @doc """
   Sets the storage root directory.
   """
-  def set_storage_root(path) do
-    Application.put_env(:ps3, :storage_root, path)
+  def storage_root(path) when is_binary(path) do
+    cond do
+      valid_path?(path) ->
+        Application.put_env(:ps3, :storage_root, path)
+        :ok
+
+      true ->
+        {:error, "Invalid path"}
+    end
   end
 
   @doc """
@@ -229,5 +236,9 @@ defmodule PS3.Storage.Filesystem do
           }
         ]
     end
+  end
+
+  defp valid_path?(path) do
+    path != ""
   end
 end

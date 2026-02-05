@@ -89,7 +89,7 @@ defmodule PS3.Storage do
   Returns `:ok` if the module implements the `PS3.Storage` behaviour,
   or `{:error, :invalid_backend}` otherwise.
   """
-  def set_backend(module) do
+  def backend(module) do
     case implements_storage?(module) do
       true ->
         Application.put_env(:ps3, :storage_backend, module)
@@ -157,12 +157,16 @@ defmodule PS3.Storage do
   """
   def delete_object(bucket, key), do: backend().delete_object(bucket, key)
 
-  defp implements_storage?(module) do
-    behaviours =
-      module.module_info(:attributes)
-      |> Keyword.get_values(:behaviour)
-      |> List.flatten()
+  defp implements_storage?(module) when is_atom(module) do
+    case Code.ensure_loaded?(module) do
+      true ->
+        module.module_info(:attributes)
+        |> Keyword.get_values(:behaviour)
+        |> List.flatten()
+        |> Enum.member?(PS3.Storage)
 
-    PS3.Storage in behaviours
+      _ ->
+        false
+    end
   end
 end

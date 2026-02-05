@@ -41,13 +41,11 @@ defmodule PS3.Storage.Memory do
   def init do
     cond do
       Sandbox.enabled?() ->
-        # Initialize sandbox tables for the current process
         Sandbox.get_buckets_table()
         Sandbox.get_objects_table()
         :ok
 
       true ->
-        # Create named tables if they don't exist
         if :ets.whereis(@buckets_table) == :undefined do
           :ets.new(@buckets_table, [:set, :public, :named_table])
         end

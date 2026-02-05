@@ -10,6 +10,7 @@ defmodule PS3.IntegrationCase do
       use ExUnit.Case, async: unquote(async), group: :integration
 
       @moduletag :integration
+      @moduletag :api
 
       setup do
         PS3.IntegrationCase.setup_backend(unquote(backend), unquote(sandbox))
@@ -470,8 +471,8 @@ defmodule PS3.IntegrationCase do
 
   def setup_backend(:filesystem, sandbox) do
     tmp_dir = Path.join(System.tmp_dir!(), "ps3_test_#{System.unique_integer([:positive])}")
-    PS3.Storage.Filesystem.set_storage_root(tmp_dir)
-    PS3.Storage.set_backend(PS3.Storage.Filesystem)
+    PS3.Storage.Filesystem.storage_root(tmp_dir)
+    PS3.Storage.backend(PS3.Storage.Filesystem)
     set_sandbox(sandbox)
     PS3.Storage.init()
 
@@ -483,10 +484,13 @@ defmodule PS3.IntegrationCase do
     :ok
   end
 
-  defp set_sandbox(nil), do: :noop
+  defp set_sandbox(nil) do
+    PS3.Storage.Memory.Sandbox.reset_mode()
+  end
 
-  defp set_sandbox(:disabled) do
-    Application.delete_env(:ps3, :ps3_sandbox_mode_setting)
+  defp set_sandbox(:shared) do
+    pid = PS3.Storage.Memory.Sandbox.start_owner!(shared: true)
+    ExUnit.Callbacks.on_exit(fn -> PS3.Storage.Memory.Sandbox.stop_owner(pid) end)
   end
 
   defp set_sandbox(:manual) do
@@ -494,8 +498,8 @@ defmodule PS3.IntegrationCase do
     PS3.Storage.Memory.Sandbox.checkout()
   end
 
-  defp set_sandbox(mode) do
-    PS3.Storage.Memory.Sandbox.mode(mode)
+  defp set_sandbox(:auto) do
+    PS3.Storage.Memory.Sandbox.mode(:auto)
   end
 end
 
@@ -513,10 +517,10 @@ defmodule PS3.Integration.MemoryManualSandboxingS3ApiTest do
     async: true
 end
 
-defmodule PS3.Integration.MemoryWithDisabledSandboxingTest do
+defmodule PS3.Integration.MemorySharedSandboxingS3ApiTest do
   use PS3.IntegrationCase,
     backend: :memory,
-    sandbox: nil,
+    sandbox: :shared,
     async: false
 end
 

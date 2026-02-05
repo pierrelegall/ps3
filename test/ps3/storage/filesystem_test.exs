@@ -2,18 +2,31 @@ defmodule PS3.Storage.FilesystemTest do
   use ExUnit.Case, async: true
 
   @moduletag :unit
+  @moduletag :storage
   @moduletag :filesystem
 
   alias PS3.Storage.Filesystem
 
   setup do
-    Filesystem.set_storage_root(test_storage_root())
+    Filesystem.storage_root(test_storage_root())
     Filesystem.init()
   end
 
   describe "initialization" do
     test "storage_root/0 returns configured root" do
       assert Filesystem.storage_root() == test_storage_root()
+    end
+
+    test "storage_root/1 accepts an absolute path" do
+      assert :ok = Filesystem.storage_root("/tmp/ps3_absolute")
+    end
+
+    test "storage_root/1 accepts a relative path" do
+      assert :ok = Filesystem.storage_root("./relative_path")
+    end
+
+    test "storage_root/1 rejects an empty path" do
+      assert {:error, "Invalid path"} = Filesystem.storage_root("")
     end
 
     test "init/0 creates storage directory" do

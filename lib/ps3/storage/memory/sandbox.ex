@@ -55,7 +55,6 @@ defmodule PS3.Storage.Memory.Sandbox do
   """
 
   @registry_table :ps3_sandbox_ownership
-  @mode_key :ps3_sandbox_mode_setting
 
   # ============================================================================
   # Sandbox Status
@@ -81,7 +80,7 @@ defmodule PS3.Storage.Memory.Sandbox do
   """
   @spec enabled?() :: boolean()
   def enabled? do
-    get_mode() != nil
+    mode() != nil
   end
 
   # ============================================================================
@@ -234,6 +233,16 @@ defmodule PS3.Storage.Memory.Sandbox do
   end
 
   @doc """
+  Returns the current sandbox mode.
+
+  Returns `:auto`, `:manual`, `{:shared, pid}`, or `nil` if not set.
+  """
+  @spec mode() :: :auto | :manual | {:shared, pid()} | nil
+  def mode do
+    Application.get_env(:ps3, :memory_sandbox_mode)
+  end
+
+  @doc """
   Sets the sandbox mode.
 
   ## Modes
@@ -264,19 +273,19 @@ defmodule PS3.Storage.Memory.Sandbox do
   @spec mode(:auto | :manual | {:shared, pid()}) ::
           :ok | :already_shared | :not_owner | :not_found
   def mode(mode) when mode in [:auto, :manual] do
-    Application.put_env(:ps3, @mode_key, mode)
+    Application.put_env(:ps3, :memory_sandbox_mode, mode)
     :ok
   end
 
   def mode({:shared, pid}) when is_pid(pid) do
-    current_mode = get_mode()
+    current_mode = mode()
 
     if current_mode == {:shared, pid} do
       :already_shared
     else
       case lookup_status(pid) do
         {:ok, :owner, _tables} ->
-          Application.put_env(:ps3, @mode_key, {:shared, pid})
+          Application.put_env(:ps3, :memory_sandbox_mode, {:shared, pid})
           :ok
 
         {:ok, {:allowed, _}, _} ->
@@ -286,6 +295,15 @@ defmodule PS3.Storage.Memory.Sandbox do
           :not_found
       end
     end
+  end
+
+  @doc """
+  Resets the sandbox mode, disabling the sandbox.
+  """
+  @spec reset_mode() :: :ok
+  def reset_mode do
+    Application.delete_env(:ps3, :memory_sandbox_mode)
+    :ok
   end
 
   @doc """
@@ -368,7 +386,7 @@ defmodule PS3.Storage.Memory.Sandbox do
   @spec stop_owner(pid()) :: :ok
   def stop_owner(pid) do
     # Reset shared mode if this pid was the shared owner
-    case get_mode() do
+    case mode() do
       {:shared, ^pid} -> mode(:auto)
       _ -> :ok
     end
@@ -524,7 +542,7 @@ defmodule PS3.Storage.Memory.Sandbox do
   end
 
   defp find_tables_in_shared_mode do
-    case get_mode() do
+    case mode() do
       {:shared, shared_pid} -> find_owner_tables(shared_pid)
       _ -> :not_found
     end
@@ -538,12 +556,8 @@ defmodule PS3.Storage.Memory.Sandbox do
     end
   end
 
-  defp get_mode do
-    Application.get_env(:ps3, @mode_key)
-  end
-
   defp handle_not_found(table_type) do
-    case get_mode() do
+    case mode() do
       :auto ->
         # Auto-create tables for this process
         tables = create_tables()

@@ -11,14 +11,11 @@ defmodule PS3.ExAwsHttpClient do
   When the sandbox is disabled, requests pass straight through to `ExAws.Request.Req`.
   """
 
-  @behaviour ExAws.Request.HttpClient
-
   alias PS3.Storage.Memory.Sandbox
 
-  @impl true
   def request(method, url, body \\ "", headers \\ [], http_opts \\ []) do
     headers = maybe_inject_sandbox_header(headers)
-    ExAws.Request.Req.request(method, url, body, headers, http_opts)
+    apply(ExAws.Request.Req, :request, [method, url, body, headers, http_opts])
   end
 
   defp maybe_inject_sandbox_header(headers) do

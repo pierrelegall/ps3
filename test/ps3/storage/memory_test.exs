@@ -2,13 +2,14 @@ defmodule PS3.Storage.MemoryTest do
   use ExUnit.Case, async: true
 
   @moduletag :unit
+  @moduletag :storage
   @moduletag :memory
 
   alias PS3.Storage.Memory
   alias PS3.Storage.Memory.Sandbox
 
   setup do
-    PS3.Storage.set_backend(PS3.Storage.Memory)
+    PS3.Storage.backend(PS3.Storage.Memory)
     Sandbox.mode(:auto)
     Memory.init()
   end
@@ -21,8 +22,8 @@ defmodule PS3.Storage.MemoryTest do
     @tag :async_false
     test "init/0 creates ETS tables when sandbox is disabled" do
       # This test must run synchronously and temporarily disable sandbox
-      original_mode = Application.get_env(:ps3, :ps3_sandbox_mode_setting)
-      Application.delete_env(:ps3, :ps3_sandbox_mode_setting)
+      original_mode = Sandbox.mode()
+      Sandbox.reset_mode()
 
       # Clean up any existing tables
       if :ets.whereis(:ps3_buckets) != :undefined do
