@@ -7,6 +7,16 @@ defmodule PS3.Router do
 
   ## Mounting Examples
 
+  ### With Phoenix
+
+  In your Phoenix router (`lib/your_app_web/router.ex`):
+
+      scope "/" do
+        forward "/s3", PS3.Router
+      end
+
+  Then access PS3 at `http://localhost:4000/s3/`
+
   ### With Bandit
 
       children = [
@@ -18,16 +28,6 @@ defmodule PS3.Router do
       children = [
         {Plug.Cowboy, scheme: :http, plug: PS3.Router, port: 9000}
       ]
-
-  ### With Phoenix
-
-  In your Phoenix router (`lib/your_app_web/router.ex`):
-
-      scope "/" do
-        forward "/s3", PS3.Router
-      end
-
-  Then access PS3 at `http://localhost:4000/s3/`
 
   ## Supported S3 Operations
 

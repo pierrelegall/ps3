@@ -6,7 +6,7 @@ defmodule PS3.MixProject do
       app: :ps3,
       version: "0.1.0",
       elixir: "~> 1.18",
-      elixirc_paths: elixirc_paths(Mix.env()),
+      elixirc_paths: ["lib"],
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -19,8 +19,6 @@ defmodule PS3.MixProject do
       mod: {PS3.Application, []}
     ]
   end
-
-  defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
