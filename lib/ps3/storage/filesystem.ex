@@ -45,7 +45,6 @@ defmodule PS3.Storage.Filesystem do
   """
   @impl true
   def init do
-    File.rm_rf(storage_root())
     File.mkdir_p(storage_root())
     :ok
   end

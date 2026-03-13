@@ -8,7 +8,8 @@ defmodule PS3.MixProject do
       elixir: "~> 1.18",
       elixirc_paths: ["lib"],
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      config_path: "config/config.exs"
     ]
   end
 
@@ -25,12 +26,10 @@ defmodule PS3.MixProject do
     [
       {:bandit, "~> 1.10", only: :test},
       {:benchee, "~> 1.5", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_aws, "~> 2.6", only: :test},
-      {:ex_aws_s3, "~> 2.5", only: :test},
+      {:credo, "~> 1.7", only: :dev, runtime: false},
       {:plug, "~> 1.19"},
-      {:req, "~> 0.5", only: :test},
-      {:sweet_xml, "~> 0.7", only: :test}
+      {:req, "~> 0.5"},
+      {:sweet_xml, "~> 0.7"}
     ]
   end
 end

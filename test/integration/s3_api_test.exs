@@ -1,6 +1,8 @@
 defmodule PS3.IntegrationCase do
   use ExUnit.CaseTemplate
 
+  alias PS3.Client, as: S3
+
   using opts do
     backend = Keyword.fetch!(opts, :backend)
     sandbox = Keyword.fetch!(opts, :sandbox)
@@ -18,146 +20,90 @@ defmodule PS3.IntegrationCase do
 
       describe "PutObject" do
         test "stores an object successfully" do
-          assert {:ok, _response} =
-                   "test-bucket"
-                   |> ExAws.S3.put_object("test-file.txt", "Hello, PS3!")
-                   |> ExAws.request()
+          assert {:ok, _response} = S3.put_object("test-bucket", "test-file.txt", "Hello, PS3!")
         end
 
         test "stores binary content" do
           binary_content = <<1, 2, 3, 4, 5>>
 
-          assert {:ok, _response} =
-                   "test-bucket"
-                   |> ExAws.S3.put_object("binary.bin", binary_content)
-                   |> ExAws.request()
+          assert {:ok, _response} = S3.put_object("test-bucket", "binary.bin", binary_content)
         end
 
         test "stores large content" do
           large_content = String.duplicate("a", 10_000)
 
-          assert {:ok, _response} =
-                   "test-bucket"
-                   |> ExAws.S3.put_object("large.txt", large_content)
-                   |> ExAws.request()
+          assert {:ok, _response} = S3.put_object("test-bucket", "large.txt", large_content)
         end
       end
 
       describe "GetObject" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("test-file.txt", "Hello, PS3!")
-            |> ExAws.request()
+          {:ok, _} = S3.put_object("test-bucket", "test-file.txt", "Hello, PS3!")
 
           :ok
         end
 
         test "retrieves an object successfully" do
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("test-file.txt")
-                   |> ExAws.request()
-
+          assert {:ok, %{body: body}} = S3.get_object("test-bucket", "test-file.txt")
           assert body == "Hello, PS3!"
         end
 
         test "returns error for non-existent object" do
           assert {:error, {:http_error, 404, _}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("non-existent.txt")
-                   |> ExAws.request()
+                   S3.get_object("test-bucket", "non-existent.txt")
         end
       end
 
       describe "DeleteObject" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("test-file.txt", "Hello, PS3!")
-            |> ExAws.request()
-
+          {:ok, _} = S3.put_object("test-bucket", "test-file.txt", "Hello, PS3!")
           :ok
         end
 
         test "deletes an object successfully" do
-          assert {:ok, _response} =
-                   "test-bucket"
-                   |> ExAws.S3.delete_object("test-file.txt")
-                   |> ExAws.request()
+          assert {:ok, _response} = S3.delete_object("test-bucket", "test-file.txt")
 
-          # Verify object is gone
           assert {:error, {:http_error, 404, _}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("test-file.txt")
-                   |> ExAws.request()
+                   S3.get_object("test-bucket", "test-file.txt")
         end
 
         test "deleting non-existent object succeeds" do
-          assert {:ok, _response} =
-                   "test-bucket"
-                   |> ExAws.S3.delete_object("non-existent.txt")
-                   |> ExAws.request()
+          assert {:ok, _response} = S3.delete_object("test-bucket", "non-existent.txt")
         end
       end
 
       describe "ListObjects" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("file1.txt", "content1")
-            |> ExAws.request()
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("file2.txt", "content2")
-            |> ExAws.request()
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("dir/file3.txt", "content3")
-            |> ExAws.request()
+          {:ok, _} = S3.put_object("test-bucket", "file1.txt", "content1")
+          {:ok, _} = S3.put_object("test-bucket", "file2.txt", "content2")
+          {:ok, _} = S3.put_object("test-bucket", "dir/file3.txt", "content3")
 
           :ok
         end
 
         test "lists objects in bucket" do
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects()
-                   |> ExAws.request()
+          assert {:ok, %{body: body}} = S3.list_objects("test-bucket")
 
           assert Enum.count(body.contents) >= 3
-
           keys = Enum.map(body.contents, & &1.key)
-
           assert "file1.txt" in keys
           assert "file2.txt" in keys
           assert "dir/file3.txt" in keys
         end
 
         test "lists objects with prefix" do
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects(prefix: "dir/")
-                   |> ExAws.request()
+          assert {:ok, %{body: body}} = S3.list_objects("test-bucket", prefix: "dir/")
 
           refute Enum.empty?(body.contents)
-
           keys = Enum.map(body.contents, & &1.key)
-
           assert "dir/file3.txt" in keys
           refute "file1.txt" in keys
         end
 
         test "lists objects with empty prefix returns all" do
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects(prefix: "")
-                   |> ExAws.request()
+          assert {:ok, %{body: body}} = S3.list_objects("test-bucket", prefix: "")
 
           keys = Enum.map(body.contents, & &1.key)
-
           assert "file1.txt" in keys
           assert "file2.txt" in keys
           assert "dir/file3.txt" in keys
@@ -165,9 +111,7 @@ defmodule PS3.IntegrationCase do
 
         test "lists objects with prefix matching no objects" do
           assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects(prefix: "nonexistent/")
-                   |> ExAws.request()
+                   S3.list_objects("test-bucket", prefix: "nonexistent/")
 
           assert Enum.empty?(body.contents)
         end
@@ -175,19 +119,14 @@ defmodule PS3.IntegrationCase do
 
       describe "HeadObject" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("test-file.txt", "Hello, PS3!")
-            |> ExAws.request()
+          {:ok, _} = S3.put_object("test-bucket", "test-file.txt", "Hello, PS3!")
 
           :ok
         end
 
         test "retrieves object metadata" do
           assert {:ok, %{headers: headers}} =
-                   "test-bucket"
-                   |> ExAws.S3.head_object("test-file.txt")
-                   |> ExAws.request()
+                   S3.head_object("test-bucket", "test-file.txt")
 
           content_length =
             headers
@@ -199,23 +138,15 @@ defmodule PS3.IntegrationCase do
 
         test "returns error for non-existent object" do
           assert {:error, {:http_error, 404, _}} =
-                   "test-bucket"
-                   |> ExAws.S3.head_object("non-existent.txt")
-                   |> ExAws.request()
+                   S3.head_object("test-bucket", "non-existent.txt")
         end
 
         test "returns correct content-length" do
           content = "exact length test"
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("length-test.txt", content)
-            |> ExAws.request()
+          {:ok, _} = S3.put_object("test-bucket", "length-test.txt", content)
 
           assert {:ok, %{headers: headers}} =
-                   "test-bucket"
-                   |> ExAws.S3.head_object("length-test.txt")
-                   |> ExAws.request()
+                   S3.head_object("test-bucket", "length-test.txt")
 
           content_length =
             headers
@@ -226,59 +157,33 @@ defmodule PS3.IntegrationCase do
         end
 
         test "returns empty body" do
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.head_object("test-file.txt")
-                   |> ExAws.request()
-
+          assert {:ok, %{body: body}} = S3.head_object("test-bucket", "test-file.txt")
           assert body == ""
         end
       end
 
       describe "HeadBucket" do
         test "returns 200 for existing bucket" do
-          assert {:ok, %{status_code: 200}} =
-                   "test-bucket"
-                   |> ExAws.S3.head_bucket()
-                   |> ExAws.request()
+          assert {:ok, %{status_code: 200}} = S3.head_bucket("test-bucket")
         end
 
         test "returns 404 for non-existent bucket" do
-          assert {:error, {:http_error, 404, _}} =
-                   "no-such-bucket"
-                   |> ExAws.S3.head_bucket()
-                   |> ExAws.request()
+          assert {:error, {:http_error, 404, _}} = S3.head_bucket("no-such-bucket")
         end
       end
 
       describe "ListObjectsV2" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("file1.txt", "content1")
-            |> ExAws.request()
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("file2.txt", "content2")
-            |> ExAws.request()
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("dir/file3.txt", "content3")
-            |> ExAws.request()
-
+          {:ok, _} = S3.put_object("test-bucket", "file1.txt", "content1")
+          {:ok, _} = S3.put_object("test-bucket", "file2.txt", "content2")
+          {:ok, _} = S3.put_object("test-bucket", "dir/file3.txt", "content3")
           :ok
         end
 
         test "lists objects with list_objects_v2" do
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects_v2()
-                   |> ExAws.request()
+          assert {:ok, %{body: body}} = S3.list_objects_v2("test-bucket")
 
           keys = Enum.map(body.contents, & &1.key)
-
           assert "file1.txt" in keys
           assert "file2.txt" in keys
           assert "dir/file3.txt" in keys
@@ -286,21 +191,16 @@ defmodule PS3.IntegrationCase do
 
         test "lists objects with prefix using v2" do
           assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects_v2(prefix: "dir/")
-                   |> ExAws.request()
+                   S3.list_objects_v2("test-bucket", prefix: "dir/")
 
           keys = Enum.map(body.contents, & &1.key)
-
           assert "dir/file3.txt" in keys
           refute "file1.txt" in keys
         end
 
         test "returns key_count in v2 response" do
           assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.list_objects_v2(prefix: "dir/")
-                   |> ExAws.request()
+                   S3.list_objects_v2("test-bucket", prefix: "dir/")
 
           assert body.key_count == "1"
         end
@@ -308,115 +208,77 @@ defmodule PS3.IntegrationCase do
 
       describe "CopyObject" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("test-file.txt", "Hello, PS3!")
-            |> ExAws.request()
+          {:ok, _} = S3.put_object("test-bucket", "test-file.txt", "Hello, PS3!")
 
           :ok
         end
 
         test "copies an object to a new key" do
           assert {:ok, _} =
-                   ExAws.S3.put_object_copy(
+                   S3.put_object_copy(
                      "test-bucket",
                      "copied.txt",
                      "test-bucket",
                      "test-file.txt"
                    )
-                   |> ExAws.request()
 
-          assert {:ok, %{body: body}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("copied.txt")
-                   |> ExAws.request()
-
+          assert {:ok, %{body: body}} = S3.get_object("test-bucket", "copied.txt")
           assert body == "Hello, PS3!"
         end
 
         test "copies an object to a different bucket" do
-          {:ok, _} =
-            "other-bucket"
-            |> ExAws.S3.put_bucket("local")
-            |> ExAws.request()
+          {:ok, _} = S3.put_bucket("other-bucket")
 
           assert {:ok, _} =
-                   ExAws.S3.put_object_copy(
+                   S3.put_object_copy(
                      "other-bucket",
                      "copied.txt",
                      "test-bucket",
                      "test-file.txt"
                    )
-                   |> ExAws.request()
 
-          assert {:ok, %{body: body}} =
-                   "other-bucket"
-                   |> ExAws.S3.get_object("copied.txt")
-                   |> ExAws.request()
-
+          assert {:ok, %{body: body}} = S3.get_object("other-bucket", "copied.txt")
           assert body == "Hello, PS3!"
         end
 
         test "returns error when source does not exist" do
           assert {:error, {:http_error, 404, _}} =
-                   ExAws.S3.put_object_copy(
+                   S3.put_object_copy(
                      "test-bucket",
                      "dest.txt",
                      "test-bucket",
                      "no-such-key"
                    )
-                   |> ExAws.request()
         end
       end
 
       describe "DeleteObjects" do
         setup do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("del1.txt", "content1")
-            |> ExAws.request()
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("del2.txt", "content2")
-            |> ExAws.request()
-
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("keep.txt", "content3")
-            |> ExAws.request()
-
+          {:ok, _} = S3.put_object("test-bucket", "del1.txt", "content1")
+          {:ok, _} = S3.put_object("test-bucket", "del2.txt", "content2")
+          {:ok, _} = S3.put_object("test-bucket", "keep.txt", "content3")
           :ok
         end
 
         test "deletes multiple objects" do
           assert {:ok, _} =
-                   "test-bucket"
-                   |> ExAws.S3.delete_multiple_objects(["del1.txt", "del2.txt"])
-                   |> ExAws.request()
+                   S3.delete_multiple_objects("test-bucket", ["del1.txt", "del2.txt"])
 
           assert {:error, {:http_error, 404, _}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("del1.txt")
-                   |> ExAws.request()
+                   S3.get_object("test-bucket", "del1.txt")
 
           assert {:error, {:http_error, 404, _}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("del2.txt")
-                   |> ExAws.request()
+                   S3.get_object("test-bucket", "del2.txt")
 
-          # Untouched object still exists
-          assert {:ok, %{body: "content3"}} =
-                   "test-bucket"
-                   |> ExAws.S3.get_object("keep.txt")
-                   |> ExAws.request()
+          assert {:ok, %{body: "content3"}} = S3.get_object("test-bucket", "keep.txt")
         end
 
         test "deletes with non-existent keys succeeds" do
           assert {:ok, _} =
-                   "test-bucket"
-                   |> ExAws.S3.delete_multiple_objects(["no-such-1.txt", "no-such-2.txt"])
-                   |> ExAws.request()
+                   S3.delete_multiple_objects("test-bucket", [
+                     "no-such-1.txt",
+                     "no-such-2.txt"
+                   ])
         end
       end
 
@@ -425,9 +287,7 @@ defmodule PS3.IntegrationCase do
           tasks =
             for i <- 1..10 do
               Task.async(fn ->
-                "test-bucket"
-                |> ExAws.S3.put_object("concurrent-#{i}.txt", "content-#{i}")
-                |> ExAws.request()
+                S3.put_object("test-bucket", "concurrent-#{i}.txt", "content-#{i}")
               end)
             end
 
@@ -436,16 +296,12 @@ defmodule PS3.IntegrationCase do
         end
 
         test "handles concurrent read operations" do
-          {:ok, _} =
-            "test-bucket"
-            |> ExAws.S3.put_object("shared.txt", "shared")
-            |> ExAws.request()
+          {:ok, _} = S3.put_object("test-bucket", "shared.txt", "shared")
 
           tasks =
             for _i <- 1..10 do
               Task.async(fn ->
-                ExAws.S3.get_object("test-bucket", "shared.txt")
-                |> ExAws.request()
+                S3.get_object("test-bucket", "shared.txt")
               end)
             end
 
@@ -460,11 +316,7 @@ defmodule PS3.IntegrationCase do
   def setup_backend(:memory, sandbox) do
     set_sandbox(sandbox)
     PS3.Storage.init()
-
-    {:ok, _} =
-      "test-bucket"
-      |> ExAws.S3.put_bucket("local")
-      |> ExAws.request()
+    {:ok, _} = S3.put_bucket("test-bucket")
 
     :ok
   end
@@ -475,11 +327,7 @@ defmodule PS3.IntegrationCase do
     PS3.Storage.backend(PS3.Storage.Filesystem)
     set_sandbox(sandbox)
     PS3.Storage.init()
-
-    {:ok, _} =
-      "test-bucket"
-      |> ExAws.S3.put_bucket("local")
-      |> ExAws.request()
+    {:ok, _} = S3.put_bucket("test-bucket")
 
     :ok
   end

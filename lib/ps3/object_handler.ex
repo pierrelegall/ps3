@@ -112,7 +112,7 @@ defmodule PS3.ObjectHandler do
 
     keys =
       Regex.scan(~r/<Key>([^<]+)<\/Key>/, body)
-      |> Enum.map(fn [_, key] -> key end)
+      |> Enum.map(fn [_, key] -> xml_unescape(key) end)
 
     Enum.each(keys, fn key ->
       PS3.Storage.delete_object(bucket, key)
@@ -167,5 +167,14 @@ defmodule PS3.ObjectHandler do
     conn
     |> put_resp_content_type("application/xml")
     |> send_resp(status, xml)
+  end
+
+  defp xml_unescape(str) do
+    str
+    |> String.replace("&lt;", "<")
+    |> String.replace("&gt;", ">")
+    |> String.replace("&quot;", "\"")
+    |> String.replace("&apos;", "'")
+    |> String.replace("&amp;", "&")
   end
 end

@@ -136,7 +136,9 @@ defmodule PS3.BucketHandler do
       end)
 
     prefix_xml = if prefix, do: "\n  <Prefix>#{prefix}</Prefix>", else: ""
-    key_count_xml = if list_type == "2", do: "\n  <KeyCount>#{length(objects)}</KeyCount>", else: ""
+
+    key_count_xml =
+      if list_type == "2", do: "\n  <KeyCount>#{length(objects)}</KeyCount>", else: ""
 
     """
     <?xml version="1.0" encoding="UTF-8"?>

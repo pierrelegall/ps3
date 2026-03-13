@@ -34,6 +34,7 @@ Add `ps3` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
+    # [...]
     {:ps3, "~> 0.1.0", only: [:dev, :test]},
     # [...]
   ]
@@ -42,7 +43,9 @@ end
 
 ## Configuration
 
-**Warning**: Configure PS3 in environment-specific config files (`config/dev.exs`, `config/test.exs`), **NOT** in `config/config.exs`. PS3 is not designed for production environments.
+> **Warning**: Configure PS3 server-side features in environment-specific config files (`config/dev.exs`, `config/test.exs`), **NOT** in `config/config.exs`. PS3 is not designed for production environments.
+
+> **Note**: PS3 works with any Plug-compatible web server (Bandit, Cowboy, etc.)
 
 Configure the storage backend per environment:
 
@@ -55,9 +58,6 @@ config :ps3,
 # config/test.exs
 config :ps3,
   storage_backend: PS3.Storage.Memory
-
-config :ex_aws,
-  http_client: PS3.ExAwsHttpClient
 ```
 
 And enable the sandbox in `test/test_helper.exs`:
@@ -65,10 +65,7 @@ And enable the sandbox in `test/test_helper.exs`:
 ```elixir
 # test/test_helper.exs
 PS3.Storage.Memory.Sandbox.mode(:auto)
-ExUnit.start()
 ```
-
-> **Note**: `PS3.ExAwsHttpClient` automatically injects sandbox headers (if sandboxing enabled) so each test process gets its own isolated storage to allow tests to be run asynchronously.
 
 Then, mount PS3 at a specific path in your Phoenix application:
 
@@ -83,58 +80,56 @@ defmodule AppWeb.Router do
 end
 ```
 
-Finally, access PS3 at `http://localhost:4000/s3/` (or your Phoenix app's URL).
-
-> **Note**: PS3 works with any Plug-compatible web server (Bandit, Cowboy, etc.)
-
-## Usage
-
-Configure your S3 client to point to your local PS3 instance:
+Finally, you can access PS3 at `http://localhost:4000/s3` (or your Phoenix app's URL). You need to use a S3 client which injects sandbox header when sandboxing enabled. To do so, we recommend to use the PS3 built-in S3 client: `PS3.Client`. It needs to be configured as below:
 
 ```elixir
-# config/dev.exs or config/test.exs
-config :ex_aws,
-  access_key_id: "fake",
-  secret_access_key: "fake"
+# config/dev.exs
+config :ps3, :client,
+  endpoint: "http://localhost:4000/s3"
 
-config :ex_aws, :s3,
-  scheme: "http://",
-  host: "localhost",
-  port: 4000,
-  region: "local"
+# config/test.exs (note the port is different)
+config :ps3, :client,
+  endpoint: "http://localhost:4002/s3"
+
+# config/prod.exs
+config :ps3, :client,
+  endpoint: "https://your.s3.service.net",
+  access_key_id: System.fetch_env!("S3_ACCESS_KEY_ID"),
+  secret_access_key: System.fetch_env!("S3_SECRET_ACCESS_KEY"),
+  region: System.fetch_env!("S3_REGION")
 ```
 
-Then use `ExAws` as normal:
+## Client usage
+
+The `PS3.Client` is a very simple S3 client, i.e.:
 
 ```elixir
 # Put an object
-ExAws.S3.put_object("my-bucket", "file.txt", "Hello, World!")
-|> ExAws.request()
+PS3.Client.put_object("my-bucket", "file.txt", "Hello, World!")
 
 # Get an object
-ExAws.S3.get_object("my-bucket", "file.txt")
-|> ExAws.request()
+PS3.Client.get_object("my-bucket", "file.txt")
 
 # List objects
-ExAws.S3.list_objects("my-bucket")
-|> ExAws.request()
+PS3.Client.list_objects("my-bucket")
 ```
 
-## Known issues
+## Questions
 
-### `PS3` works only with `ExAws.S3`
+### Does `PS3` work only with the built-in `PS3.Client`?
 
-`PS3`'s `Memory` back-end (used in tests) isolates data per-test-process using an ETS-based sandbox system (PS3.Storage.Memory.Sandbox). For this to work across process boundaries (test process → HTTP handler process), PS3 needs to know which test owns the request. It does this via a custom `x-ps3-sandbox-owner` header containing the test's Erlang PID. This custom behavior is added via the `PS3.ExAwsHttpClient` module, which is a custom HTTP client for `ExAws`.
+`PS3`'s `Memory` back-end (used in tests) isolates data per-test-process using an ETS-based sandbox system (PS3.Storage.Memory.Sandbox). For this to work across process boundaries (test process → HTTP handler process), PS3 needs to know which test owns the request. It does this via a custom `x-ps3-sandbox-owner` header containing the test's Erlang PID/
+If `PS3.Client` is the recommended client to use with `PS3` for now, clients like `ExAws` can inject header like done by `PS3.Client`. So `PS3.Client` is not the only compatible client.
 
-This is why `PS3` works only with `ExAws` with the `Memory` back-end, for now.
-
-### `mix ecto.setup` fail on file upload to S3
+### `mix ecto.setup` fail because S3 endpoint is not yet up, how can I do?
 
 `PS3` is mounted as a `Plug` route inside the Phoenix endpoint (via forward "/s3", PS3.Router in the router). This means PS3's HTTP server is only available when the Phoenix endpoint is actually listening for HTTP connections. No HTTP server means the `ExAws.S3` client can't reach `localhost:4000/s3/…`, so any seed or task that stores files through PS3 via ExAws will fail.
 
 The workaround is to start the server before seeding data. To do so, add this line at the top of your `./priv/repo/seed.exs`:
 
 ```elixir
+# In ./priv/repo/seed.exs
+
 # Ensure the Phoenix endpoint is serving HTTP so the local S3 routes
 # (PS3) are reachable for image uploads during seeding.
 [ip: ip, port: port] = Web7.Endpoint.config(:http)
